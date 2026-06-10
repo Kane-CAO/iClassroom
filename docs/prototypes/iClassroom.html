@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iClassroom - Teacher Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ink: '#172033',
+            muted: '#64748B',
+            line: '#E2E8F0',
+            canvas: '#F6F8FB',
+            brand: {
+              50: '#EEF6FF',
+              100: '#D9ECFF',
+              500: '#2563EB',
+              600: '#1D4ED8',
+              700: '#1E40AF'
+            }
+          },
+          boxShadow: {
+            soft: '0 1px 2px rgba(15, 23, 42, .05), 0 10px 30px rgba(15, 23, 42, .06)'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    :root { color-scheme: light; }
+    html.dark { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      min-width: 1280px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    .nav-tab.active {
+      color: #1D4ED8;
+      background: #EFF6FF;
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, .16);
+    }
+    .dark .nav-tab.active {
+      color: #93C5FD;
+      background: rgba(37, 99, 235, .14);
+      box-shadow: inset 0 0 0 1px rgba(147, 197, 253, .18);
+    }
+    .page { display: none; }
+    .page.active { display: block; }
+    .student-row.active {
+      border-color: #2563EB;
+      background: #EFF6FF;
+    }
+    .dark .student-row.active {
+      border-color: #60A5FA;
+      background: rgba(37, 99, 235, .16);
+    }
+    .status-filter.active {
+      color: #1D4ED8;
+      background: #EFF6FF;
+      border-color: #BFDBFE;
+    }
+    .dark .status-filter.active {
+      color: #93C5FD;
+      background: rgba(37, 99, 235, .14);
+      border-color: rgba(147, 197, 253, .24);
+    }
+    .course-cover img,
+    .submission-image img { transition: transform .25s ease; }
+    .course-card:hover .course-cover img,
+    .submission-image:hover img { transform: scale(1.04); }
+    input[type="range"] { accent-color: #2563EB; }
+  </style>
+</head>
+<body class="bg-canvas text-ink dark:bg-slate-950 dark:text-slate-100">
+  <div class="min-h-screen">
+    <header class="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/92">
+      <div class="flex h-16 items-center px-8">
+        <button class="flex items-center gap-3" onclick="showPage('home')">
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">iC</span>
+          <span class="text-lg font-semibold tracking-normal">iClassroom</span>
+        </button>
+
+        <nav class="mx-auto flex items-center gap-2 rounded-lg border border-line bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+          <button class="nav-tab active rounded-md px-5 py-2 text-sm font-semibold text-slate-600 transition dark:text-slate-300" data-route="home" onclick="showPage('home')">Courses</button>
+          <button class="nav-tab rounded-md px-5 py-2 text-sm font-semibold text-slate-600 transition dark:text-slate-300" data-route="course" onclick="showPage('course')">Assignments</button>
+        </nav>
+
+        <div class="flex items-center gap-3">
+          <button class="relative flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Notifications">
+            <i data-lucide="bell" class="h-4 w-4"></i>
+            <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"></span>
+          </button>
+          <button id="dark-toggle" class="flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800" onclick="toggleDark()">
+            <i data-lucide="moon" class="h-4 w-4"></i>
+            <span>Dark</span>
+          </button>
+          <button class="flex items-center gap-3 rounded-lg border border-line bg-white py-1.5 pl-2 pr-3 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800">
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-brand-500">EC</span>
+            <span class="text-left">
+              <span class="block text-sm font-semibold leading-4">Evelyn Chen</span>
+              <span class="block text-xs text-muted dark:text-slate-400">Teacher</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="px-8 py-7">
+      <section id="page-home" class="page active">
+        <div class="grid grid-cols-[1fr_340px] gap-6">
+          <div>
+            <div class="mb-5 flex items-end justify-between">
+              <div>
+                <h1 class="text-2xl font-semibold tracking-normal">My Courses</h1>
+                <p class="mt-1 text-sm text-muted dark:text-slate-400">Spring 2026 classroom workspace</p>
+              </div>
+              <button class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700" onclick="showPage('create')">
+                <i data-lucide="plus" class="h-4 w-4"></i>
+                Create Assignment
+              </button>
+            </div>
+
+            <div id="course-grid" class="grid grid-cols-3 gap-5"></div>
+          </div>
+
+          <aside class="space-y-5">
+            <section class="rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <div class="border-b border-line px-5 py-4 dark:border-slate-800">
+                <h2 class="text-sm font-semibold">Announcements</h2>
+              </div>
+              <div class="divide-y divide-line dark:divide-slate-800">
+                <div class="px-5 py-4">
+                  <p class="text-sm font-semibold">Studio critique room changed</p>
+                  <p class="mt-1 text-xs leading-5 text-muted dark:text-slate-400">Industrial Design Studio meets in B214 on Friday.</p>
+                </div>
+                <div class="px-5 py-4">
+                  <p class="text-sm font-semibold">Review PDFs available</p>
+                  <p class="mt-1 text-xs leading-5 text-muted dark:text-slate-400">Published feedback is now downloadable for Assignment 2.</p>
+                </div>
+                <div class="px-5 py-4">
+                  <p class="text-sm font-semibold">Office hours posted</p>
+                  <p class="mt-1 text-xs leading-5 text-muted dark:text-slate-400">Wednesday 14:00-16:00 for UX Research Methods.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <div class="border-b border-line px-5 py-4 dark:border-slate-800">
+                <h2 class="text-sm font-semibold">Upcoming Assignments</h2>
+              </div>
+              <div id="upcoming-list" class="divide-y divide-line dark:divide-slate-800"></div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-sm font-semibold">June 2026</h2>
+                <div class="flex gap-1 text-slate-400">
+                  <i data-lucide="chevron-left" class="h-4 w-4"></i>
+                  <i data-lucide="chevron-right" class="h-4 w-4"></i>
+                </div>
+              </div>
+              <div id="mini-calendar" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-course" class="page">
+        <div class="rounded-lg border border-line bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-sm font-semibold text-brand-600 dark:text-brand-100">Course Detail</p>
+              <h1 id="course-name" class="mt-2 text-3xl font-semibold tracking-normal">Industrial Design Studio</h1>
+              <div id="course-meta" class="mt-3 flex items-center gap-4 text-sm text-muted dark:text-slate-400"></div>
+            </div>
+            <button class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700" onclick="showPage('create')">
+              <i data-lucide="file-plus-2" class="h-4 w-4"></i>
+              Create Assignment
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-6 grid grid-cols-[1fr_320px] gap-6">
+          <div>
+            <div class="mb-4 flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold">Assignments</h2>
+                <p class="text-sm text-muted dark:text-slate-400">Create, edit, duplicate, close, and review submissions.</p>
+              </div>
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="showToast('Draft duplicated')">
+                <i data-lucide="copy" class="h-4 w-4"></i>
+                Bulk Duplicate
+              </button>
+            </div>
+            <div id="assignment-list" class="space-y-4"></div>
+          </div>
+
+          <aside class="space-y-5">
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h3 class="text-sm font-semibold">Review Summary</h3>
+              <div class="mt-5 space-y-4">
+                <div>
+                  <div class="mb-2 flex justify-between text-xs font-semibold"><span>Submitted</span><span>19 / 24</span></div>
+                  <div class="h-2 rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-2 w-[79%] rounded-full bg-brand-600"></div></div>
+                </div>
+                <div>
+                  <div class="mb-2 flex justify-between text-xs font-semibold"><span>Reviewed</span><span>12 / 19</span></div>
+                  <div class="h-2 rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-2 w-[63%] rounded-full bg-emerald-500"></div></div>
+                </div>
+                <div>
+                  <div class="mb-2 flex justify-between text-xs font-semibold"><span>Feedback Published</span><span>8 / 19</span></div>
+                  <div class="h-2 rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-2 w-[42%] rounded-full bg-sky-500"></div></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h3 class="text-sm font-semibold">Quick Actions</h3>
+              <div class="mt-4 grid gap-2">
+                <button class="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showPage('review')">
+                  Open Review Queue <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                </button>
+                <button class="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showToast('Student QR code opened')">
+                  Show Join QR <i data-lucide="qr-code" class="h-4 w-4"></i>
+                </button>
+                <button class="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showToast('Submissions exported as ZIP')">
+                  Export Submissions <i data-lucide="download" class="h-4 w-4"></i>
+                </button>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-create" class="page">
+        <div class="grid grid-cols-[1fr_340px] gap-6">
+          <form class="rounded-lg border border-line bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900" onsubmit="event.preventDefault(); showToast('Assignment published'); showPage('course');">
+            <div class="mb-6 flex items-start justify-between">
+              <div>
+                <p class="text-sm font-semibold text-brand-600 dark:text-brand-100">Create Assignment</p>
+                <h1 class="mt-2 text-2xl font-semibold tracking-normal">New classroom collection</h1>
+              </div>
+              <button class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700" type="submit">
+                <i data-lucide="send" class="h-4 w-4"></i>
+                Publish
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-5">
+              <label class="col-span-2 block">
+                <span class="text-sm font-semibold">Assignment Title</span>
+                <input class="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" value="Persona Research Pack" />
+              </label>
+              <label class="col-span-2 block">
+                <span class="text-sm font-semibold">Description</span>
+                <input class="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" value="Submit your interview synthesis, persona board, and final research memo." />
+              </label>
+              <label class="col-span-2 block">
+                <span class="text-sm font-semibold">Instructions</span>
+                <textarea class="mt-2 h-32 w-full resize-none rounded-lg border border-line bg-white px-3 py-2.5 text-sm leading-6 outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950">Upload a written response, at least two image artifacts, and supporting files. Include the source interview notes as a PDF or DOCX.</textarea>
+              </label>
+              <label class="block">
+                <span class="text-sm font-semibold">Due Date</span>
+                <input type="date" class="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" value="2026-06-18" />
+              </label>
+              <label class="block">
+                <span class="text-sm font-semibold">Time Limit</span>
+                <select class="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950">
+                  <option>45 minutes</option>
+                  <option>60 minutes</option>
+                  <option>90 minutes</option>
+                  <option>No timed session</option>
+                </select>
+              </label>
+              <label class="col-span-2 block">
+                <span class="text-sm font-semibold">Attachment Upload</span>
+                <input type="file" multiple class="mt-2 w-full rounded-lg border border-dashed border-line bg-slate-50 px-3 py-6 text-sm dark:border-slate-800 dark:bg-slate-950" />
+              </label>
+              <label class="col-span-2 block">
+                <span class="text-sm font-semibold">Optional PDF Attachment</span>
+                <input type="file" accept="application/pdf" class="mt-2 w-full rounded-lg border border-dashed border-line bg-slate-50 px-3 py-6 text-sm dark:border-slate-800 dark:bg-slate-950" />
+              </label>
+            </div>
+          </form>
+
+          <aside class="space-y-5">
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-sm font-semibold">Student Submission Settings</h2>
+              <div class="mt-4 space-y-3">
+                <label class="flex items-center justify-between rounded-lg border border-line px-3 py-2 dark:border-slate-800">
+                  <span class="text-sm font-semibold">Written response</span>
+                  <input type="checkbox" checked />
+                </label>
+                <label class="flex items-center justify-between rounded-lg border border-line px-3 py-2 dark:border-slate-800">
+                  <span class="text-sm font-semibold">Image upload</span>
+                  <input type="checkbox" checked />
+                </label>
+                <label class="flex items-center justify-between rounded-lg border border-line px-3 py-2 dark:border-slate-800">
+                  <span class="text-sm font-semibold">File upload</span>
+                  <input type="checkbox" checked />
+                </label>
+              </div>
+            </section>
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-sm font-semibold">Student Upload Preview</h2>
+              <div class="mt-4 rounded-lg border border-line bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                <div class="mb-3 h-20 rounded-lg border border-dashed border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900"></div>
+                <p class="text-xs leading-5 text-muted dark:text-slate-400">Students can attach images, PDFs, DOCX, and project files before submitting.</p>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-review" class="page">
+        <div class="mb-5 rounded-lg border border-brand-100 bg-brand-50 p-4 shadow-soft dark:border-brand-500/20 dark:bg-brand-500/10">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold text-brand-700 dark:text-brand-100">Persona Research Pack</p>
+              <h1 class="mt-1 text-2xl font-semibold tracking-normal">Submission Review</h1>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="rounded-lg bg-white px-5 py-3 text-center shadow-sm dark:bg-slate-900">
+                <p class="text-xs font-semibold uppercase text-muted dark:text-slate-400">Class Timer</p>
+                <p id="timer-display" class="mt-1 font-mono text-3xl font-bold tabular-nums text-brand-700 dark:text-brand-100">45:00</p>
+              </div>
+              <button id="timer-start" class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-brand-700" onclick="toggleTimer()">
+                <i data-lucide="play" class="h-4 w-4"></i>
+                Start
+              </button>
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="resetTimer()">
+                <i data-lucide="rotate-ccw" class="h-4 w-4"></i>
+                Reset
+              </button>
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="extendTimer(5)">
+                <i data-lucide="plus" class="h-4 w-4"></i>
+                5 min
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid h-[calc(100vh-184px)] grid-cols-[300px_1fr_360px] gap-5">
+          <aside class="overflow-hidden rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div class="border-b border-line p-4 dark:border-slate-800">
+              <h2 class="text-sm font-semibold">Student Submissions</h2>
+              <div class="relative mt-3">
+                <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-muted"></i>
+                <input id="student-search" class="w-full rounded-lg border border-line bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" placeholder="Search student" oninput="renderStudentList()" />
+              </div>
+              <div class="mt-3 flex gap-2">
+                <button class="status-filter active rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold dark:border-slate-800" data-filter="all" onclick="setFilter('all', this)">All</button>
+                <button class="status-filter rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold dark:border-slate-800" data-filter="submitted" onclick="setFilter('submitted', this)">Submitted</button>
+                <button class="status-filter rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold dark:border-slate-800" data-filter="pending" onclick="setFilter('pending', this)">Pending</button>
+                <button class="status-filter rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold dark:border-slate-800" data-filter="reviewed" onclick="setFilter('reviewed', this)">Reviewed</button>
+              </div>
+            </div>
+            <div id="student-list" class="h-[calc(100%-128px)] overflow-y-auto p-3"></div>
+          </aside>
+
+          <section class="overflow-y-auto rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div id="submission-detail"></div>
+          </section>
+
+          <aside class="overflow-y-auto rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div id="feedback-panel"></div>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="fixed bottom-6 right-6 z-50 hidden rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-soft dark:bg-white dark:text-slate-950"></div>
+
+  <script>
+    const courses = [
+      {
+        id: 'industrial',
+        title: 'Industrial Design Studio',
+        code: 'IDS-402',
+        students: 24,
+        assignments: 6,
+        last: 'Today, 10:32',
+        cover: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=900&q=80',
+        summary: 'Prototype critique, material studies, and studio submissions.'
+      },
+      {
+        id: 'visual',
+        title: 'Visual Communication',
+        code: 'VC-218',
+        students: 31,
+        assignments: 8,
+        last: 'Yesterday, 16:45',
+        cover: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80',
+        summary: 'Campaign systems, layouts, and design process files.'
+      },
+      {
+        id: 'ux',
+        title: 'UX Research Methods',
+        code: 'UXR-310',
+        students: 28,
+        assignments: 5,
+        last: 'Mon, 09:12',
+        cover: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80',
+        summary: 'Interview plans, synthesis boards, and written findings.'
+      }
+    ];
+
+    const assignments = [
+      { title: 'Persona Research Pack', due: 'Jun 18, 2026 17:00', count: '19 / 24', status: 'Active', course: 'industrial' },
+      { title: 'Material Joint Prototype', due: 'Jun 21, 2026 14:00', count: '7 / 24', status: 'Active', course: 'industrial' },
+      { title: 'Ergonomic Observation Notes', due: 'Jun 12, 2026 18:00', count: '24 / 24', status: 'Closed', course: 'industrial' },
+      { title: 'Research Memo Draft', due: 'Jun 24, 2026 12:00', count: '0 / 24', status: 'Draft', course: 'industrial' }
+    ];
+
+    const submissions = [
+      {
+        id: 'alex',
+        name: 'Alex Kim',
+        initials: 'AK',
+        status: 'reviewed',
+        time: 'Jun 9, 2026 10:14',
+        score: 8,
+        feedback: 'Strong synthesis and clear persona framing. Add one more direct quote to support the accessibility pain point.',
+        response: 'My persona, Sarah, is a 28-year-old UX researcher who struggles with information overload in data-heavy review sessions. The uploaded journey map shows where navigation friction and weak system feedback slow her down.',
+        images: [
+          ['Persona board', 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=80'],
+          ['Journey map', 'https://images.unsplash.com/photo-1542744095-291d1f67b221?auto=format&fit=crop&w=800&q=80']
+        ],
+        files: [
+          ['Interview-notes.pdf', '2.4 MB', 'PDF'],
+          ['Persona-board.fig', '8.1 MB', 'FIG']
+        ],
+        history: ['Score 7 saved on Jun 8', 'Annotated PDF uploaded on Jun 9', 'Feedback published on Jun 9']
+      },
+      {
+        id: 'maya',
+        name: 'Maya Rodriguez',
+        initials: 'MR',
+        status: 'submitted',
+        time: 'Jun 9, 2026 10:41',
+        score: 7,
+        feedback: '',
+        response: 'I developed two personas: Marcus, a time-constrained product manager, and Jin, a student with low technical confidence. The contrast suggests two onboarding paths and contextual help for complex features.',
+        images: [
+          ['Persona A', 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80'],
+          ['Persona B', 'https://images.unsplash.com/photo-1557426272-fc759fdf7a8d?auto=format&fit=crop&w=800&q=80'],
+          ['Notes wall', 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80']
+        ],
+        files: [
+          ['Persona-analysis.docx', '1.1 MB', 'DOCX'],
+          ['Interview-audio.zip', '46 MB', 'ZIP']
+        ],
+        history: ['Submission received on Jun 9']
+      },
+      {
+        id: 'theo',
+        name: 'Theo Lin',
+        initials: 'TL',
+        status: 'submitted',
+        time: 'Jun 9, 2026 11:03',
+        score: 9,
+        feedback: '',
+        response: 'Three interviews point to Elena, a 41-year-old operations director who needs rapid decision support. Her main issues are notification fatigue, weak data trust, and unclear export states.',
+        images: [
+          ['Interview synthesis', 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80'],
+          ['Persona card', 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80']
+        ],
+        files: [
+          ['Research-pack.pdf', '5.7 MB', 'PDF'],
+          ['Raw-transcripts.docx', '3.5 MB', 'DOCX']
+        ],
+        history: ['Submission received on Jun 9']
+      },
+      {
+        id: 'sofia',
+        name: 'Sofia Park',
+        initials: 'SP',
+        status: 'pending',
+        time: 'Not submitted',
+        score: 0,
+        feedback: '',
+        response: '',
+        images: [],
+        files: [],
+        history: ['Reminder sent on Jun 8']
+      },
+      {
+        id: 'nora',
+        name: 'Nora Patel',
+        initials: 'NP',
+        status: 'reviewed',
+        time: 'Jun 8, 2026 16:28',
+        score: 9,
+        feedback: 'Excellent interview evidence. The annotated PDF explains next steps for tightening your findings.',
+        response: 'I focused on remote design students and how they organize project references before critique. The persona highlights file naming, visual overload, and feedback timing.',
+        images: [
+          ['Affinity map', 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80']
+        ],
+        files: [
+          ['Annotated-review.pdf', '1.8 MB', 'PDF'],
+          ['Source-research.zip', '22 MB', 'ZIP']
+        ],
+        history: ['Score 9 saved on Jun 8', 'Review PDF uploaded on Jun 8', 'Feedback published on Jun 8']
+      }
+    ];
+
+    let selectedCourseId = 'industrial';
+    let selectedStudentId = 'alex';
+    let activeFilter = 'all';
+    let timerSeconds = 45 * 60;
+    let timerInterval = null;
+
+    function badgeClass(status) {
+      if (status === 'Active') return 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20';
+      if (status === 'Closed') return 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700';
+      return 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20';
+    }
+
+    function submissionBadge(status) {
+      if (status === 'reviewed') return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
+      if (status === 'pending') return 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+      return 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-100';
+    }
+
+    function renderCourses() {
+      document.getElementById('course-grid').innerHTML = courses.map(course => `
+        <button class="course-card rounded-lg border border-line bg-white text-left shadow-soft transition hover:-translate-y-0.5 hover:border-brand-200 dark:border-slate-800 dark:bg-slate-900" onclick="selectCourse('${course.id}')">
+          <div class="course-cover h-36 overflow-hidden rounded-t-lg bg-slate-200">
+            <img class="h-full w-full object-cover" src="${course.cover}" alt="${course.title} cover" />
+          </div>
+          <div class="p-5">
+            <h2 class="text-lg font-semibold tracking-normal">${course.title}</h2>
+            <p class="mt-2 min-h-[40px] text-sm leading-5 text-muted dark:text-slate-400">${course.summary}</p>
+            <div class="mt-5 grid grid-cols-3 gap-3 text-sm">
+              <div><p class="font-semibold">${course.students}</p><p class="text-xs text-muted dark:text-slate-400">Students</p></div>
+              <div><p class="font-semibold">${course.assignments}</p><p class="text-xs text-muted dark:text-slate-400">Assignments</p></div>
+              <div><p class="font-semibold">${course.last}</p><p class="text-xs text-muted dark:text-slate-400">Last Activity</p></div>
+            </div>
+          </div>
+        </button>
+      `).join('');
+
+      document.getElementById('upcoming-list').innerHTML = assignments.slice(0, 3).map(item => `
+        <button class="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800" onclick="showPage('review')">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-100">18</span>
+          <span class="min-w-0">
+            <span class="block truncate text-sm font-semibold">${item.title}</span>
+            <span class="block text-xs text-muted dark:text-slate-400">${item.due}</span>
+          </span>
+        </button>
+      `).join('');
+    }
+
+    function renderCalendar() {
+      const cal = document.getElementById('mini-calendar');
+      const headers = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      const events = [9, 12, 18, 21, 24];
+      let html = headers.map(day => `<div class="py-1 font-semibold text-muted dark:text-slate-500">${day}</div>`).join('');
+      html += '<div></div>';
+      for (let day = 1; day <= 30; day++) {
+        const active = day === 9 ? 'bg-brand-600 text-white font-bold' : events.includes(day) ? 'bg-brand-50 text-brand-700 font-semibold dark:bg-brand-500/10 dark:text-brand-100' : 'text-slate-600 dark:text-slate-300';
+        html += `<div class="rounded-md py-2 ${active}">${day}</div>`;
+      }
+      cal.innerHTML = html;
+    }
+
+    function selectCourse(id) {
+      selectedCourseId = id;
+      renderCourse();
+      showPage('course');
+    }
+
+    function renderCourse() {
+      const course = courses.find(item => item.id === selectedCourseId) || courses[0];
+      document.getElementById('course-name').textContent = course.title;
+      document.getElementById('course-meta').innerHTML = `
+        <span>${course.code}</span>
+        <span>${course.students} students</span>
+        <span>${course.assignments} assignments</span>
+      `;
+      document.getElementById('assignment-list').innerHTML = assignments.map(item => `
+        <article class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+          <div class="flex items-start justify-between gap-5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-3">
+                <h3 class="truncate text-lg font-semibold tracking-normal">${item.title}</h3>
+                <span class="rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${badgeClass(item.status)}">${item.status}</span>
+              </div>
+              <div class="mt-3 flex items-center gap-5 text-sm text-muted dark:text-slate-400">
+                <span class="inline-flex items-center gap-1.5"><i data-lucide="calendar-clock" class="h-4 w-4"></i>${item.due}</span>
+                <span class="inline-flex items-center gap-1.5"><i data-lucide="inbox" class="h-4 w-4"></i>${item.count} submitted</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showPage('create')"><i data-lucide="pencil" class="h-4 w-4"></i>Edit</button>
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showToast('Assignment duplicated')"><i data-lucide="copy" class="h-4 w-4"></i>Duplicate</button>
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showToast('Assignment closed')"><i data-lucide="lock" class="h-4 w-4"></i>Close</button>
+              <button class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700" onclick="showPage('review')"><i data-lucide="clipboard-check" class="h-4 w-4"></i>Review</button>
+            </div>
+          </div>
+        </article>
+      `).join('');
+      refreshIcons();
+    }
+
+    function showPage(route) {
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.getElementById(`page-${route}`).classList.add('active');
+      document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.route === (route === 'home' ? 'home' : 'course')));
+      if (route === 'review') {
+        renderStudentList();
+        renderSubmission();
+      }
+      if (route === 'course') renderCourse();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      refreshIcons();
+    }
+
+    function setFilter(filter, el) {
+      activeFilter = filter;
+      document.querySelectorAll('.status-filter').forEach(item => item.classList.remove('active'));
+      el.classList.add('active');
+      renderStudentList();
+    }
+
+    function renderStudentList() {
+      const query = (document.getElementById('student-search')?.value || '').trim().toLowerCase();
+      const visible = submissions.filter(student => {
+        const matchesFilter = activeFilter === 'all' || student.status === activeFilter;
+        const matchesQuery = !query || student.name.toLowerCase().includes(query);
+        return matchesFilter && matchesQuery;
+      });
+      document.getElementById('student-list').innerHTML = visible.map(student => `
+        <button class="student-row mb-2 w-full rounded-lg border border-line p-3 text-left transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800 ${student.id === selectedStudentId ? 'active' : ''}" onclick="selectStudent('${student.id}')">
+          <div class="flex items-center gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-brand-500">${student.initials}</span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-semibold">${student.name}</span>
+              <span class="block text-xs text-muted dark:text-slate-400">${student.time}</span>
+            </span>
+            <span class="rounded-full px-2 py-1 text-[11px] font-bold capitalize ${submissionBadge(student.status)}">${student.status}</span>
+          </div>
+        </button>
+      `).join('') || '<p class="p-3 text-sm text-muted dark:text-slate-400">No students match this filter.</p>';
+    }
+
+    function selectStudent(id) {
+      selectedStudentId = id;
+      renderStudentList();
+      renderSubmission();
+    }
+
+    function currentStudent() {
+      return submissions.find(student => student.id === selectedStudentId) || submissions[0];
+    }
+
+    function renderSubmission() {
+      const student = currentStudent();
+      const emptyState = student.status === 'pending';
+      document.getElementById('submission-detail').innerHTML = `
+        <div class="border-b border-line p-5 dark:border-slate-800">
+          <div class="flex items-start justify-between">
+            <div>
+              <h2 class="text-xl font-semibold tracking-normal">${student.name}</h2>
+              <p class="mt-1 text-sm text-muted dark:text-slate-400">Submission time: ${student.time}</p>
+            </div>
+            <span class="rounded-full px-2.5 py-1 text-xs font-bold capitalize ${submissionBadge(student.status)}">${student.status}</span>
+          </div>
+        </div>
+
+        ${emptyState ? `
+          <div class="flex h-[520px] items-center justify-center p-10 text-center">
+            <div>
+              <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i data-lucide="clock" class="h-7 w-7"></i></div>
+              <h3 class="mt-4 text-lg font-semibold">Waiting for submission</h3>
+              <p class="mt-2 max-w-sm text-sm leading-6 text-muted dark:text-slate-400">This student has not uploaded files or images yet.</p>
+            </div>
+          </div>
+        ` : `
+          <div class="space-y-6 p-5">
+            <section>
+              <div class="mb-3 flex items-center justify-between">
+                <h3 class="text-sm font-semibold">Uploaded Images</h3>
+                <span class="text-xs text-muted dark:text-slate-400">${student.images.length} images</span>
+              </div>
+              <div class="grid grid-cols-3 gap-3">
+                ${student.images.map(([label, src]) => `
+                  <figure class="submission-image overflow-hidden rounded-lg border border-line bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
+                    <img class="h-40 w-full object-cover" src="${src}" alt="${label}" />
+                    <figcaption class="border-t border-line px-3 py-2 text-xs font-semibold dark:border-slate-800">${label}</figcaption>
+                  </figure>
+                `).join('')}
+              </div>
+            </section>
+
+            <section>
+              <h3 class="mb-3 text-sm font-semibold">Uploaded Files</h3>
+              <div class="grid grid-cols-2 gap-3">
+                ${student.files.map(([name, size, type]) => `
+                  <button class="flex items-center gap-3 rounded-lg border border-line p-3 text-left hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-xs font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-100">${type}</span>
+                    <span class="min-w-0">
+                      <span class="block truncate text-sm font-semibold">${name}</span>
+                      <span class="text-xs text-muted dark:text-slate-400">${size}</span>
+                    </span>
+                  </button>
+                `).join('')}
+              </div>
+            </section>
+
+            <section>
+              <h3 class="mb-3 text-sm font-semibold">Written Response</h3>
+              <div class="rounded-lg border border-line bg-slate-50 p-4 text-sm leading-7 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">${student.response}</div>
+            </section>
+
+            <section>
+              <h3 class="mb-3 text-sm font-semibold">PDF Preview</h3>
+              <div class="rounded-lg border border-line bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
+                <div class="mx-auto h-80 w-60 rounded-md border border-line bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div class="mb-5 h-4 w-36 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  <div class="space-y-2">
+                    <div class="h-2 rounded bg-slate-200 dark:bg-slate-700"></div>
+                    <div class="h-2 rounded bg-slate-200 dark:bg-slate-700"></div>
+                    <div class="h-2 w-4/5 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  </div>
+                  <div class="mt-6 h-28 rounded border border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950"></div>
+                  <div class="mt-6 space-y-2">
+                    <div class="h-2 rounded bg-slate-200 dark:bg-slate-700"></div>
+                    <div class="h-2 w-2/3 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        `}
+      `;
+
+      document.getElementById('feedback-panel').innerHTML = `
+        <div class="border-b border-line p-5 dark:border-slate-800">
+          <h2 class="text-lg font-semibold tracking-normal">Teacher Feedback</h2>
+          <p class="mt-1 text-sm text-muted dark:text-slate-400">Score, comment, upload annotated PDF, and publish.</p>
+        </div>
+        <div class="space-y-5 p-5">
+          <label class="block">
+            <span class="flex items-center justify-between text-sm font-semibold">
+              Score
+              <span id="score-value" class="text-brand-700 dark:text-brand-100">${student.score || 1} / 10</span>
+            </span>
+            <input id="score-input" type="range" min="1" max="10" value="${student.score || 1}" class="mt-3 w-full" oninput="document.getElementById('score-value').textContent = this.value + ' / 10'" />
+          </label>
+
+          <label class="block">
+            <span class="text-sm font-semibold">Written Feedback</span>
+            <textarea id="feedback-input" class="mt-2 h-40 w-full resize-none rounded-lg border border-line bg-white p-3 text-sm leading-6 outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" placeholder="Write focused feedback for the student.">${student.feedback}</textarea>
+          </label>
+
+          <label class="block">
+            <span class="text-sm font-semibold">Upload Annotated PDF</span>
+            <input type="file" accept="application/pdf" class="mt-2 w-full rounded-lg border border-dashed border-line bg-slate-50 px-3 py-5 text-sm dark:border-slate-800 dark:bg-slate-950" />
+          </label>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button class="inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="moveStudent(-1)">
+              <i data-lucide="arrow-left" class="h-4 w-4"></i>
+              Previous
+            </button>
+            <button class="inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="moveStudent(1)">
+              Next
+              <i data-lucide="arrow-right" class="h-4 w-4"></i>
+            </button>
+          </div>
+
+          <button class="w-full rounded-lg border border-line px-3 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="saveReview()">Save Review</button>
+          <button class="w-full rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-brand-700" onclick="publishFeedback()">Publish Feedback</button>
+
+          <section class="pt-2">
+            <h3 class="mb-3 text-sm font-semibold">Feedback History</h3>
+            <div class="space-y-3">
+              ${student.history.map(item => `
+                <div class="flex gap-3 rounded-lg border border-line p-3 dark:border-slate-800">
+                  <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-600"></span>
+                  <p class="text-xs leading-5 text-slate-600 dark:text-slate-300">${item}</p>
+                </div>
+              `).join('')}
+            </div>
+          </section>
+        </div>
+      `;
+      refreshIcons();
+    }
+
+    function saveReview() {
+      const student = currentStudent();
+      student.score = Number(document.getElementById('score-input').value);
+      student.feedback = document.getElementById('feedback-input').value;
+      if (student.status !== 'pending') student.status = 'reviewed';
+      student.history.unshift(`Score ${student.score} saved on Jun 9`);
+      renderStudentList();
+      renderSubmission();
+      showToast('Review saved');
+    }
+
+    function publishFeedback() {
+      saveReview();
+      currentStudent().history.unshift('Feedback published and PDF review prepared');
+      renderSubmission();
+      showToast('Feedback published to student');
+    }
+
+    function moveStudent(step) {
+      const index = submissions.findIndex(student => student.id === selectedStudentId);
+      const nextIndex = Math.max(0, Math.min(submissions.length - 1, index + step));
+      selectStudent(submissions[nextIndex].id);
+    }
+
+    function updateTimer() {
+      const minutes = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+      const seconds = String(timerSeconds % 60).padStart(2, '0');
+      document.getElementById('timer-display').textContent = `${minutes}:${seconds}`;
+    }
+
+    function toggleTimer() {
+      const button = document.getElementById('timer-start');
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        button.innerHTML = '<i data-lucide="play" class="h-4 w-4"></i>Start';
+        refreshIcons();
+        return;
+      }
+      button.innerHTML = '<i data-lucide="pause" class="h-4 w-4"></i>Pause';
+      refreshIcons();
+      timerInterval = setInterval(() => {
+        timerSeconds = Math.max(0, timerSeconds - 1);
+        updateTimer();
+        if (timerSeconds === 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          button.innerHTML = '<i data-lucide="play" class="h-4 w-4"></i>Start';
+          refreshIcons();
+          showToast('Class timer complete');
+        }
+      }, 1000);
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerSeconds = 45 * 60;
+      document.getElementById('timer-start').innerHTML = '<i data-lucide="play" class="h-4 w-4"></i>Start';
+      updateTimer();
+      refreshIcons();
+    }
+
+    function extendTimer(minutes) {
+      timerSeconds += minutes * 60;
+      updateTimer();
+      showToast(`${minutes} minutes added`);
+    }
+
+    function toggleDark() {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      document.getElementById('dark-toggle').innerHTML = isDark
+        ? '<i data-lucide="sun" class="h-4 w-4"></i><span>Light</span>'
+        : '<i data-lucide="moon" class="h-4 w-4"></i><span>Dark</span>';
+      refreshIcons();
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
+    }
+
+    function refreshIcons() {
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderCourses();
+      renderCalendar();
+      renderCourse();
+      updateTimer();
+      refreshIcons();
+    });
+  </script>
+</body>
+</html>
