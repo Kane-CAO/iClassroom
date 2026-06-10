@@ -1,0 +1,63 @@
+# ===== macOS / 编辑器 =====
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+*.iml
+
+# ===== 环境变量 / 密钥(PRD 明令禁止提交) =====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ===== 后端 Go =====
+# 编译产物 / 二进制
+backend/server
+backend/bin/
+backend/**/*.exe
+backend/**/*.test
+backend/**/*.out
+# 覆盖率
+backend/coverage.*
+backend/*.cover
+# vendor(如使用 go modules 默认不提交 vendor)
+backend/vendor/
+
+# ===== 后端运行期上传目录(只保留目录,不提交内容) =====
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# ===== 后端导出产物(Excel / Zip,运行期生成) =====
+backend/exports/
+*.xlsx
+*.zip
+
+# ===== 前端 Node / Vite =====
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+frontend/coverage/
+frontend/*.local
+# 包管理器日志
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# ===== 通用日志 / 临时文件 =====
+*.log
+logs/
+tmp/
+*.tmp
+
+# ===== Docker(可选,如有本地 override) =====
+docker-compose.override.yml

@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iClassroom - 教师工作台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ink: '#172033',
+            muted: '#64748B',
+            line: '#E2E8F0',
+            canvas: '#F6F8FB',
+            brand: {
+              50: '#EEF6FF',
+              100: '#D9ECFF',
+              500: '#2563EB',
+              600: '#1D4ED8',
+              700: '#1E40AF'
+            }
+          },
+          boxShadow: {
+            soft: '0 1px 2px rgba(15, 23, 42, .05), 0 10px 30px rgba(15, 23, 42, .06)'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    :root { color-scheme: light; }
+    html.dark { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      min-width: 1280px;
+      font-family: "Alibaba PuHuiTi 3.0", "Alibaba PuHuiTi", "Alibaba Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Helvetica Neue", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+    .nav-tab.active {
+      color: #1D4ED8;
+      background: #EFF6FF;
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, .16);
+    }
+    .dark .nav-tab.active {
+      color: #93C5FD;
+      background: rgba(37, 99, 235, .14);
+      box-shadow: inset 0 0 0 1px rgba(147, 197, 253, .18);
+    }
+    .page { display: none; }
+    .page.active { display: block; }
+    .student-row.active {
+      border-color: #2563EB;
+      background: #EFF6FF;
+    }
+    .dark .student-row.active {
+      border-color: #60A5FA;
+      background: rgba(37, 99, 235, .16);
+    }
+    .status-filter.active {
+      color: #1D4ED8;
+      background: #EFF6FF;
+      border-color: #BFDBFE;
+    }
+    .dark .status-filter.active {
+      color: #93C5FD;
+      background: rgba(37, 99, 235, .14);
+      border-color: rgba(147, 197, 253, .24);
+    }
+    .course-cover img,
+    .submission-image img { transition: transform .25s ease; }
+    .course-card:hover .course-cover img,
+    .submission-image:hover img { transform: scale(1.04); }
+    input[type="range"] { accent-color: #2563EB; }
+  </style>
+</head>
+<body class="bg-canvas text-ink dark:bg-slate-950 dark:text-slate-100">
+  <div class="min-h-screen">
+    <header class="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/92">
+      <div class="flex h-16 items-center px-8">
+        <button class="flex items-center gap-3" onclick="showPage('home')">
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">iC</span>
+          <span class="text-lg font-semibold tracking-normal">iClassroom</span>
+        </button>
+
+        <nav class="mx-auto flex items-center gap-2 rounded-lg border border-line bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+          <button class="nav-tab active rounded-md px-5 py-2 text-sm font-semibold text-slate-600 transition dark:text-slate-300" data-route="home" onclick="showPage('home')">课程</button>
+          <button class="nav-tab rounded-md px-5 py-2 text-sm font-semibold text-slate-600 transition dark:text-slate-300" data-route="course" onclick="showPage('course')">作业</button>
+        </nav>
+
+        <div class="flex items-center gap-3">
+          <button class="relative flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="通知">
+            <i data-lucide="bell" class="h-4 w-4"></i>
+            <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"></span>
+          </button>
+          <button id="dark-toggle" class="flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800" onclick="toggleDark()">
+            <i data-lucide="moon" class="h-4 w-4"></i>
+            <span>深色</span>
+          </button>
+          <button class="flex items-center gap-3 rounded-lg border border-line bg-white py-1.5 pl-2 pr-3 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800">
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-brand-500">EC</span>
+            <span class="text-left">
+              <span class="block text-sm font-semibold leading-4">陈老师</span>
+              <span class="block text-xs text-muted dark:text-slate-400">教师</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="px-8 py-7">
+      <section id="page-home" class="page active">
+        <div class="grid grid-cols-[1fr_340px] gap-6">
+          <div>
+            <div class="mb-5 flex items-end justify-between">
+              <div>
+                <h1 class="text-2xl font-semibold tracking-normal">我的课程</h1>
+                <p class="mt-1 text-sm text-muted dark:text-slate-400">2026 春季课堂工作区</p>
+              </div>
+              <button class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700" onclick="showPage('create')">
+                <i data-lucide="plus" class="h-4 w-4"></i>
+                创建作业
+              </button>
+            </div>
+
+            <div id="course-grid" class="grid grid-cols-3 gap-5"></div>
+          </div>
+
+          <aside class="space-y-5">
+            <section class="rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <div class="border-b border-line px-5 py-4 dark:border-slate-800">
+                <h2 class="text-sm font-semibold">通知公告</h2>
+              </div>
+              <div class="divide-y divide-line dark:divide-slate-800">
+                <div class="px-5 py-4">
+                  <p class="text-sm font-semibold">工作室讲评教室调整</p>
+                  <p class="mt-1 text-xs leading-5 text-muted dark:text-slate-400">工业设计工作室周五改在 B214 上课。</p>
+                </div>
+                <div class="px-5 py-4">
+                  <p class="text-sm font-semibold">讲评 PDF 已开放</p>
+                  <p class="mt-1 text-xs leading-5 text-muted dark:text-slate-400">作业 2 的已发布反馈现在可以下载。</p>
+                </div>
+                <div class="px-5 py-4">
+                  <p class="text-sm font-semibold">答疑时间已发布</p>
+                  <p class="mt-1 text-xs leading-5 text-muted dark:text-slate-400">用户体验研究方法课程答疑时间为周三 14:00-16:00。</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <div class="border-b border-line px-5 py-4 dark:border-slate-800">
+                <h2 class="text-sm font-semibold">即将截止的作业</h2>
+              </div>
+              <div id="upcoming-list" class="divide-y divide-line dark:divide-slate-800"></div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-sm font-semibold">2026 年 6 月</h2>
+                <div class="flex gap-1 text-slate-400">
+                  <i data-lucide="chevron-left" class="h-4 w-4"></i>
+                  <i data-lucide="chevron-right" class="h-4 w-4"></i>
+                </div>
+              </div>
+              <div id="mini-calendar" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-course" class="page">
+        <div class="rounded-lg border border-line bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-sm font-semibold text-brand-600 dark:text-brand-100">课程详情</p>
+              <h1 id="course-name" class="mt-2 text-3xl font-semibold tracking-normal">工业设计工作室</h1>
+              <div id="course-meta" class="mt-3 flex items-center gap-4 text-sm text-muted dark:text-slate-400"></div>
+            </div>
+            <button class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700" onclick="showPage('create')">
+              <i data-lucide="file-plus-2" class="h-4 w-4"></i>
+              创建作业
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-6 grid grid-cols-[1fr_320px] gap-6">
+          <div>
+            <div class="mb-4 flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold">作业</h2>
+                <p class="text-sm text-muted dark:text-slate-400">创建、编辑、复制、关闭并批阅提交内容。</p>
+              </div>
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="showToast('草稿已复制')">
+                <i data-lucide="copy" class="h-4 w-4"></i>
+                批量复制
+              </button>
+            </div>
+            <div id="assignment-list" class="space-y-4"></div>
+          </div>
+
+          <aside class="space-y-5">
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h3 class="text-sm font-semibold">批阅概览</h3>
+              <div class="mt-5 space-y-4">
+                <div>
+                  <div class="mb-2 flex justify-between text-xs font-semibold"><span>已提交</span><span>19 / 24</span></div>
+                  <div class="h-2 rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-2 w-[79%] rounded-full bg-brand-600"></div></div>
+                </div>
+                <div>
+                  <div class="mb-2 flex justify-between text-xs font-semibold"><span>已批阅</span><span>12 / 19</span></div>
+                  <div class="h-2 rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-2 w-[63%] rounded-full bg-emerald-500"></div></div>
+                </div>
+                <div>
+                  <div class="mb-2 flex justify-between text-xs font-semibold"><span>已发布反馈</span><span>8 / 19</span></div>
+                  <div class="h-2 rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-2 w-[42%] rounded-full bg-sky-500"></div></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h3 class="text-sm font-semibold">快捷操作</h3>
+              <div class="mt-4 grid gap-2">
+                <button class="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showPage('review')">
+                  打开批阅队列 <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                </button>
+                <button class="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showToast('学生入课二维码已打开')">
+                  显示入课二维码 <i data-lucide="qr-code" class="h-4 w-4"></i>
+                </button>
+                <button class="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showToast('提交内容已导出为 ZIP')">
+                  导出提交内容 <i data-lucide="download" class="h-4 w-4"></i>
+                </button>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-create" class="page">
+        <div class="grid grid-cols-[1fr_340px] gap-6">
+          <form class="rounded-lg border border-line bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900" onsubmit="publishAssignment(event, this)">
+            <div class="mb-6 flex items-start justify-between">
+              <div>
+                <p class="text-sm font-semibold text-brand-600 dark:text-brand-100">创建作业</p>
+                <h1 class="mt-2 text-2xl font-semibold tracking-normal">新的课堂收集任务</h1>
+              </div>
+              <button class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700" type="submit">
+                <i data-lucide="send" class="h-4 w-4"></i>
+                发布
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-5">
+              <label class="col-span-2 block">
+                <span class="text-sm font-semibold">作业标题</span>
+                <input class="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" value="用户画像研究包" />
+              </label>
+              <label class="col-span-2 block">
+                <span class="text-sm font-semibold">描述</span>
+                <input class="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" value="提交访谈归纳、用户画像板和最终研究备忘录。" />
+              </label>
+              <label class="col-span-2 block">
+                <span class="text-sm font-semibold">说明</span>
+                <textarea class="mt-2 h-32 w-full resize-none rounded-lg border border-line bg-white px-3 py-2.5 text-sm leading-6 outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950">上传一份文字回答、至少两张图片材料和支持文件。请将原始访谈记录以 PDF 或 DOCX 格式一并提交。</textarea>
+              </label>
+              <label class="block">
+                <span class="text-sm font-semibold">截止日期</span>
+                <input type="date" class="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" value="2026-06-18" />
+              </label>
+              <label class="block">
+                <span class="text-sm font-semibold">限时</span>
+                <select class="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950">
+                  <option>45 分钟</option>
+                  <option>60 分钟</option>
+                  <option>90 分钟</option>
+                  <option>不限时</option>
+                </select>
+              </label>
+              <label class="col-span-2 block">
+                <span class="text-sm font-semibold">附件上传</span>
+                <input type="file" multiple class="mt-2 w-full rounded-lg border border-dashed border-line bg-slate-50 px-3 py-6 text-sm dark:border-slate-800 dark:bg-slate-950" />
+              </label>
+              <label class="col-span-2 block">
+                <span class="text-sm font-semibold">可选 PDF 附件</span>
+                <input type="file" accept="application/pdf" class="mt-2 w-full rounded-lg border border-dashed border-line bg-slate-50 px-3 py-6 text-sm dark:border-slate-800 dark:bg-slate-950" />
+              </label>
+            </div>
+          </form>
+
+          <aside class="space-y-5">
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-sm font-semibold">学生提交设置</h2>
+              <div class="mt-4 space-y-3">
+                <label class="flex items-center justify-between rounded-lg border border-line px-3 py-2 dark:border-slate-800">
+                  <span class="text-sm font-semibold">文字回答</span>
+                  <input type="checkbox" checked />
+                </label>
+                <label class="flex items-center justify-between rounded-lg border border-line px-3 py-2 dark:border-slate-800">
+                  <span class="text-sm font-semibold">图片上传</span>
+                  <input type="checkbox" checked />
+                </label>
+                <label class="flex items-center justify-between rounded-lg border border-line px-3 py-2 dark:border-slate-800">
+                  <span class="text-sm font-semibold">文件上传</span>
+                  <input type="checkbox" checked />
+                </label>
+              </div>
+            </section>
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-sm font-semibold">学生上传预览</h2>
+              <div class="mt-4 rounded-lg border border-line bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                <div class="mb-3 h-20 rounded-lg border border-dashed border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900"></div>
+                <p class="text-xs leading-5 text-muted dark:text-slate-400">学生可在提交前附加图片、PDF、DOCX 和项目文件。</p>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-review" class="page">
+        <div class="mb-5 rounded-lg border border-brand-100 bg-brand-50 p-4 shadow-soft dark:border-brand-500/20 dark:bg-brand-500/10">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold text-brand-700 dark:text-brand-100">用户画像研究包</p>
+              <h1 class="mt-1 text-2xl font-semibold tracking-normal">提交批阅</h1>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="rounded-lg bg-white px-5 py-3 text-center shadow-sm dark:bg-slate-900">
+                <p class="text-xs font-semibold uppercase text-muted dark:text-slate-400">课堂计时</p>
+                <p id="timer-display" class="mt-1 font-mono text-3xl font-bold tabular-nums text-brand-700 dark:text-brand-100">45:00</p>
+              </div>
+              <button id="timer-start" class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-brand-700" onclick="toggleTimer()">
+                <i data-lucide="play" class="h-4 w-4"></i>
+                开始
+              </button>
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="resetTimer()">
+                <i data-lucide="rotate-ccw" class="h-4 w-4"></i>
+                重置
+              </button>
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="extendTimer(5)">
+                <i data-lucide="plus" class="h-4 w-4"></i>
+                加 5 分钟
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid h-[calc(100vh-184px)] grid-cols-[300px_1fr_360px] gap-5">
+          <aside class="overflow-hidden rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div class="border-b border-line p-4 dark:border-slate-800">
+              <h2 class="text-sm font-semibold">学生提交</h2>
+              <div class="relative mt-3">
+                <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-muted"></i>
+                <input id="student-search" class="w-full rounded-lg border border-line bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" placeholder="搜索学生" oninput="renderStudentList()" />
+              </div>
+              <div class="mt-3 flex gap-2">
+                <button class="status-filter active rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold dark:border-slate-800" data-filter="all" onclick="setFilter('all', this)">全部</button>
+                <button class="status-filter rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold dark:border-slate-800" data-filter="submitted" onclick="setFilter('submitted', this)">已提交</button>
+                <button class="status-filter rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold dark:border-slate-800" data-filter="pending" onclick="setFilter('pending', this)">待提交</button>
+                <button class="status-filter rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold dark:border-slate-800" data-filter="reviewed" onclick="setFilter('reviewed', this)">已批阅</button>
+              </div>
+            </div>
+            <div id="student-list" class="h-[calc(100%-128px)] overflow-y-auto p-3"></div>
+          </aside>
+
+          <section class="overflow-y-auto rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div id="submission-detail"></div>
+          </section>
+
+          <aside class="overflow-y-auto rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div id="feedback-panel"></div>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="fixed bottom-6 right-6 z-50 hidden rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-soft dark:bg-white dark:text-slate-950"></div>
+
+  <script>
+    const courses = [
+      {
+        id: 'industrial',
+        title: '工业设计工作室',
+        code: 'IDS-402',
+        students: 24,
+        assignments: 6,
+        last: '今天 10:32',
+        cover: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=900&q=80',
+        summary: '原型讲评、材料研究与工作室提交。'
+      },
+      {
+        id: 'visual',
+        title: '视觉传达',
+        code: 'VC-218',
+        students: 31,
+        assignments: 8,
+        last: '昨天 16:45',
+        cover: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80',
+        summary: '传播系统、版式设计与设计过程文件。'
+      },
+      {
+        id: 'ux',
+        title: '用户体验研究方法',
+        code: 'UXR-310',
+        students: 28,
+        assignments: 5,
+        last: '周一 09:12',
+        cover: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80',
+        summary: '访谈计划、归纳看板与书面发现。'
+      }
+    ];
+
+    const assignments = [
+      { title: '用户画像研究包', due: '2026 年 6 月 18 日 17:00', count: '19 / 24', status: '进行中', course: 'industrial' },
+      { title: '材料连接原型', due: '2026 年 6 月 21 日 14:00', count: '7 / 24', status: '进行中', course: 'industrial' },
+      { title: '人体工学观察记录', due: '2026 年 6 月 12 日 18:00', count: '24 / 24', status: '已关闭', course: 'industrial' },
+      { title: '研究备忘录草稿', due: '2026 年 6 月 24 日 12:00', count: '0 / 24', status: '草稿', course: 'industrial' }
+    ];
+
+    const submissions = [
+      {
+        id: 'alex',
+        name: '李明',
+        initials: 'AK',
+        status: 'reviewed',
+        time: 'Jun 9, 2026 10:14',
+        score: 8,
+        feedback: '归纳有力，用户画像框架清晰。建议再加入一句直接引语，以支持可访问性痛点。',
+        response: '我的用户画像 Sarah 是一位 28 岁的用户体验研究员，她在数据密集型评审中容易受到信息过载影响。上传的旅程地图展示了导航摩擦和系统反馈不足如何拖慢她的进度。',
+        images: [
+          ['用户画像板', 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=80'],
+          ['旅程地图', 'https://images.unsplash.com/photo-1542744095-291d1f67b221?auto=format&fit=crop&w=800&q=80']
+        ],
+        files: [
+          ['Interview-notes.pdf', '2.4 MB', 'PDF'],
+          ['Persona-board.fig', '8.1 MB', 'FIG']
+        ],
+        history: ['6 月 8 日已保存评分 7', '6 月 9 日已上传批注 PDF', '6 月 9 日已发布反馈']
+      },
+      {
+        id: 'maya',
+        name: 'Maya Rodriguez',
+        initials: 'MR',
+        status: 'submitted',
+        time: 'Jun 9, 2026 10:41',
+        score: 7,
+        feedback: '',
+        response: '我建立了两个用户画像：时间紧张的产品经理 Marcus，以及技术信心较低的学生 Jin。两者的差异说明产品需要两条引导路径，并在复杂功能中提供情境化帮助。',
+        images: [
+          ['用户画像 A', 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80'],
+          ['用户画像 B', 'https://images.unsplash.com/photo-1557426272-fc759fdf7a8d?auto=format&fit=crop&w=800&q=80'],
+          ['便签墙', 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80']
+        ],
+        files: [
+          ['Persona-analysis.docx', '1.1 MB', 'DOCX'],
+          ['Interview-audio.zip', '46 MB', 'ZIP']
+        ],
+        history: ['6 月 9 日已收到提交']
+      },
+      {
+        id: 'theo',
+        name: 'Theo Lin',
+        initials: 'TL',
+        status: 'submitted',
+        time: 'Jun 9, 2026 11:03',
+        score: 9,
+        feedback: '',
+        response: '三次访谈都指向 Elena：一位 41 岁、需要快速决策支持的运营总监。她的主要问题是通知疲劳、数据可信度不足，以及导出状态不清晰。',
+        images: [
+          ['访谈归纳', 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80'],
+          ['用户画像卡', 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80']
+        ],
+        files: [
+          ['Research-pack.pdf', '5.7 MB', 'PDF'],
+          ['Raw-transcripts.docx', '3.5 MB', 'DOCX']
+        ],
+        history: ['6 月 9 日已收到提交']
+      },
+      {
+        id: 'sofia',
+        name: 'Sofia Park',
+        initials: 'SP',
+        status: 'pending',
+        time: '未提交',
+        score: 0,
+        feedback: '',
+        response: '',
+        images: [],
+        files: [],
+        history: ['6 月 8 日已发送提醒']
+      },
+      {
+        id: 'nora',
+        name: 'Nora Patel',
+        initials: 'NP',
+        status: 'reviewed',
+        time: 'Jun 8, 2026 16:28',
+        score: 9,
+        feedback: '访谈证据非常充分。批注 PDF 中说明了如何进一步收紧研究发现。',
+        response: '我关注远程设计学生在讲评前如何整理项目参考资料。该用户画像突出了文件命名、视觉信息过载和反馈时机三个问题。',
+        images: [
+          ['亲和图', 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80']
+        ],
+        files: [
+          ['Annotated-review.pdf', '1.8 MB', 'PDF'],
+          ['Source-research.zip', '22 MB', 'ZIP']
+        ],
+        history: ['6 月 8 日已保存评分 9', '6 月 8 日已上传批阅 PDF', '6 月 8 日已发布反馈']
+      }
+    ];
+
+    let selectedCourseId = 'industrial';
+    let selectedStudentId = 'alex';
+    let activeFilter = 'all';
+    let timerSeconds = 45 * 60;
+    let timerInterval = null;
+
+    function formatDueDate(dateValue) {
+      if (!dateValue) return '未设置截止日期';
+      const [year, month, day] = dateValue.split('-').map(Number);
+      return `${year} 年 ${month} 月 ${day} 日 17:00`;
+    }
+
+    function publishAssignment(event, form) {
+      event.preventDefault();
+      const titleInput = form.querySelector('label:nth-of-type(1) input');
+      const descriptionInput = form.querySelector('label:nth-of-type(2) input');
+      const dueInput = form.querySelector('input[type="date"]');
+      const title = titleInput?.value.trim() || '未命名作业';
+      const description = descriptionInput?.value.trim() || '请查看作业说明并按时提交。';
+      const duplicate = assignments.some(item => item.title === title && item.status !== '已关闭');
+      if (duplicate) {
+        showToast('同名作业已存在');
+        return;
+      }
+      assignments.unshift({
+        title,
+        due: formatDueDate(dueInput?.value),
+        count: '0 / 24',
+        status: '进行中',
+        course: selectedCourseId
+      });
+      const course = courses.find(item => item.id === selectedCourseId);
+      if (course) {
+        course.assignments += 1;
+        course.last = '刚刚';
+        course.summary = description;
+      }
+      renderCourses();
+      renderCourse();
+      showToast('作业已发布');
+      showPage('course');
+    }
+
+    function badgeClass(status) {
+      if (status === '进行中') return 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20';
+      if (status === '已关闭') return 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700';
+      return 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20';
+    }
+
+    function submissionLabel(status) {
+      return ({ reviewed: '已批阅', pending: '待提交', submitted: '已提交' })[status] || status;
+    }
+
+    function assignmentLabel(status) {
+      return ({ '进行中': '进行中', '已关闭': '已关闭', '草稿': '草稿' })[status] || status;
+    }
+
+    function submissionBadge(status) {
+      if (status === 'reviewed') return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
+      if (status === 'pending') return 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+      return 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-100';
+    }
+
+    function renderCourses() {
+      document.getElementById('course-grid').innerHTML = courses.map(course => `
+        <button class="course-card rounded-lg border border-line bg-white text-left shadow-soft transition hover:-translate-y-0.5 hover:border-brand-200 dark:border-slate-800 dark:bg-slate-900" onclick="selectCourse('${course.id}')">
+          <div class="course-cover h-36 overflow-hidden rounded-t-lg bg-slate-200">
+            <img class="h-full w-full object-cover" src="${course.cover}" alt="${course.title} cover" />
+          </div>
+          <div class="p-5">
+            <h2 class="text-lg font-semibold tracking-normal">${course.title}</h2>
+            <p class="mt-2 min-h-[40px] text-sm leading-5 text-muted dark:text-slate-400">${course.summary}</p>
+            <div class="mt-5 grid grid-cols-3 gap-3 text-sm">
+              <div><p class="font-semibold">${course.students}</p><p class="text-xs text-muted dark:text-slate-400">学生</p></div>
+              <div><p class="font-semibold">${course.assignments}</p><p class="text-xs text-muted dark:text-slate-400">作业</p></div>
+              <div><p class="font-semibold">${course.last}</p><p class="text-xs text-muted dark:text-slate-400">最近动态</p></div>
+            </div>
+          </div>
+        </button>
+      `).join('');
+
+      document.getElementById('upcoming-list').innerHTML = assignments.slice(0, 3).map(item => `
+        <button class="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800" onclick="showPage('review')">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-100">18</span>
+          <span class="min-w-0">
+            <span class="block truncate text-sm font-semibold">${item.title}</span>
+            <span class="block text-xs text-muted dark:text-slate-400">${item.due}</span>
+          </span>
+        </button>
+      `).join('');
+    }
+
+    function renderCalendar() {
+      const cal = document.getElementById('mini-calendar');
+      const headers = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      const events = [9, 12, 18, 21, 24];
+      let html = headers.map(day => `<div class="py-1 font-semibold text-muted dark:text-slate-500">${day}</div>`).join('');
+      html += '<div></div>';
+      for (let day = 1; day <= 30; day++) {
+        const active = day === 9 ? 'bg-brand-600 text-white font-bold' : events.includes(day) ? 'bg-brand-50 text-brand-700 font-semibold dark:bg-brand-500/10 dark:text-brand-100' : 'text-slate-600 dark:text-slate-300';
+        html += `<div class="rounded-md py-2 ${active}">${day}</div>`;
+      }
+      cal.innerHTML = html;
+    }
+
+    function selectCourse(id) {
+      selectedCourseId = id;
+      renderCourse();
+      showPage('course');
+    }
+
+    function closeAssignment(index) {
+      const assignment = assignments[index];
+      if (!assignment) return;
+      if (assignment.status === '已关闭') {
+        showToast('作业已是关闭状态');
+        return;
+      }
+      assignment.status = '已关闭';
+      renderCourse();
+      renderCourses();
+      showToast('作业已关闭');
+    }
+
+    function renderCourse() {
+      const course = courses.find(item => item.id === selectedCourseId) || courses[0];
+      document.getElementById('course-name').textContent = course.title;
+      document.getElementById('course-meta').innerHTML = `
+        <span>${course.code}</span>
+        <span>${course.students} 名学生</span>
+        <span>${course.assignments} 项作业</span>
+      `;
+      document.getElementById('assignment-list').innerHTML = assignments.map((item, index) => `
+        <article class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+          <div class="flex items-start justify-between gap-5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-3">
+                <h3 class="truncate text-lg font-semibold tracking-normal">${item.title}</h3>
+                <span class="rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${badgeClass(item.status)}">${assignmentLabel(item.status)}</span>
+              </div>
+              <div class="mt-3 flex items-center gap-5 text-sm text-muted dark:text-slate-400">
+                <span class="inline-flex items-center gap-1.5"><i data-lucide="calendar-clock" class="h-4 w-4"></i>${item.due}</span>
+                <span class="inline-flex items-center gap-1.5"><i data-lucide="inbox" class="h-4 w-4"></i>${item.count} 已提交</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showPage('create')"><i data-lucide="pencil" class="h-4 w-4"></i>编辑</button>
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="showToast('作业已复制')"><i data-lucide="copy" class="h-4 w-4"></i>复制</button>
+              <button class="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="closeAssignment(${index})" ${item.status === '已关闭' ? 'disabled' : ''}><i data-lucide="lock" class="h-4 w-4"></i>${item.status === '已关闭' ? '已关闭' : '关闭'}</button>
+              <button class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700" onclick="showPage('review')"><i data-lucide="clipboard-check" class="h-4 w-4"></i>批阅</button>
+            </div>
+          </div>
+        </article>
+      `).join('');
+      refreshIcons();
+    }
+
+    function showPage(route) {
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.getElementById(`page-${route}`).classList.add('active');
+      document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.route === (route === 'home' ? 'home' : 'course')));
+      if (route === 'review') {
+        renderStudentList();
+        renderSubmission();
+      }
+      if (route === 'course') renderCourse();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      refreshIcons();
+    }
+
+    function setFilter(filter, el) {
+      activeFilter = filter;
+      document.querySelectorAll('.status-filter').forEach(item => item.classList.remove('active'));
+      el.classList.add('active');
+      renderStudentList();
+    }
+
+    function renderStudentList() {
+      const query = (document.getElementById('student-search')?.value || '').trim().toLowerCase();
+      const visible = submissions.filter(student => {
+        const matchesFilter = activeFilter === 'all' || student.status === activeFilter;
+        const matchesQuery = !query || student.name.toLowerCase().includes(query);
+        return matchesFilter && matchesQuery;
+      });
+      document.getElementById('student-list').innerHTML = visible.map(student => `
+        <button class="student-row mb-2 w-full rounded-lg border border-line p-3 text-left transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800 ${student.id === selectedStudentId ? 'active' : ''}" onclick="selectStudent('${student.id}')">
+          <div class="flex items-center gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-brand-500">${student.initials}</span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-semibold">${student.name}</span>
+              <span class="block text-xs text-muted dark:text-slate-400">${student.time}</span>
+            </span>
+            <span class="rounded-full px-2 py-1 text-[11px] font-bold capitalize ${submissionBadge(student.status)}">${submissionLabel(student.status)}</span>
+          </div>
+        </button>
+      `).join('') || '<p class="p-3 text-sm text-muted dark:text-slate-400">没有学生符合当前筛选条件。</p>';
+    }
+
+    function selectStudent(id) {
+      selectedStudentId = id;
+      renderStudentList();
+      renderSubmission();
+    }
+
+    function currentStudent() {
+      return submissions.find(student => student.id === selectedStudentId) || submissions[0];
+    }
+
+    function renderSubmission() {
+      const student = currentStudent();
+      const emptyState = student.status === 'pending';
+      document.getElementById('submission-detail').innerHTML = `
+        <div class="border-b border-line p-5 dark:border-slate-800">
+          <div class="flex items-start justify-between">
+            <div>
+              <h2 class="text-xl font-semibold tracking-normal">${student.name}</h2>
+              <p class="mt-1 text-sm text-muted dark:text-slate-400">提交时间： ${student.time}</p>
+            </div>
+            <span class="rounded-full px-2.5 py-1 text-xs font-bold capitalize ${submissionBadge(student.status)}">${submissionLabel(student.status)}</span>
+          </div>
+        </div>
+
+        ${emptyState ? `
+          <div class="flex h-[520px] items-center justify-center p-10 text-center">
+            <div>
+              <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i data-lucide="clock" class="h-7 w-7"></i></div>
+              <h3 class="mt-4 text-lg font-semibold">等待提交</h3>
+              <p class="mt-2 max-w-sm text-sm leading-6 text-muted dark:text-slate-400">该学生尚未上传文件或图片。</p>
+            </div>
+          </div>
+        ` : `
+          <div class="space-y-6 p-5">
+            <section>
+              <div class="mb-3 flex items-center justify-between">
+                <h3 class="text-sm font-semibold">已上传图片</h3>
+                <span class="text-xs text-muted dark:text-slate-400">${student.images.length} 张图片</span>
+              </div>
+              <div class="grid grid-cols-3 gap-3">
+                ${student.images.map(([label, src]) => `
+                  <figure class="submission-image overflow-hidden rounded-lg border border-line bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
+                    <img class="h-40 w-full object-cover" src="${src}" alt="${label}" />
+                    <figcaption class="border-t border-line px-3 py-2 text-xs font-semibold dark:border-slate-800">${label}</figcaption>
+                  </figure>
+                `).join('')}
+              </div>
+            </section>
+
+            <section>
+              <h3 class="mb-3 text-sm font-semibold">已上传文件</h3>
+              <div class="grid grid-cols-2 gap-3">
+                ${student.files.map(([name, size, type]) => `
+                  <button class="flex items-center gap-3 rounded-lg border border-line p-3 text-left hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-xs font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-100">${type}</span>
+                    <span class="min-w-0">
+                      <span class="block truncate text-sm font-semibold">${name}</span>
+                      <span class="text-xs text-muted dark:text-slate-400">${size}</span>
+                    </span>
+                  </button>
+                `).join('')}
+              </div>
+            </section>
+
+            <section>
+              <h3 class="mb-3 text-sm font-semibold">文字回答</h3>
+              <div class="rounded-lg border border-line bg-slate-50 p-4 text-sm leading-7 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">${student.response}</div>
+            </section>
+
+            <section>
+              <h3 class="mb-3 text-sm font-semibold">PDF 预览</h3>
+              <div class="rounded-lg border border-line bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
+                <div class="mx-auto h-80 w-60 rounded-md border border-line bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div class="mb-5 h-4 w-36 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  <div class="space-y-2">
+                    <div class="h-2 rounded bg-slate-200 dark:bg-slate-700"></div>
+                    <div class="h-2 rounded bg-slate-200 dark:bg-slate-700"></div>
+                    <div class="h-2 w-4/5 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  </div>
+                  <div class="mt-6 h-28 rounded border border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950"></div>
+                  <div class="mt-6 space-y-2">
+                    <div class="h-2 rounded bg-slate-200 dark:bg-slate-700"></div>
+                    <div class="h-2 w-2/3 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        `}
+      `;
+
+      document.getElementById('feedback-panel').innerHTML = `
+        <div class="border-b border-line p-5 dark:border-slate-800">
+          <h2 class="text-lg font-semibold tracking-normal">教师反馈</h2>
+          <p class="mt-1 text-sm text-muted dark:text-slate-400">评分、填写评语、上传批注 PDF 并发布。</p>
+        </div>
+        <div class="space-y-5 p-5">
+          <label class="block">
+            <span class="flex items-center justify-between text-sm font-semibold">
+              评分
+              <span id="score-value" class="text-brand-700 dark:text-brand-100">${student.score || 1} / 10</span>
+            </span>
+            <input id="score-input" type="range" min="1" max="10" value="${student.score || 1}" class="mt-3 w-full" oninput="document.getElementById('score-value').textContent = this.value + ' / 10'" />
+          </label>
+
+          <label class="block">
+            <span class="text-sm font-semibold">文字反馈</span>
+            <textarea id="feedback-input" class="mt-2 h-40 w-full resize-none rounded-lg border border-line bg-white p-3 text-sm leading-6 outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" placeholder="为学生填写有针对性的反馈。">${student.feedback}</textarea>
+          </label>
+
+          <label class="block">
+            <span class="text-sm font-semibold">上传批注 PDF</span>
+            <input type="file" accept="application/pdf" class="mt-2 w-full rounded-lg border border-dashed border-line bg-slate-50 px-3 py-5 text-sm dark:border-slate-800 dark:bg-slate-950" />
+          </label>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button class="inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="moveStudent(-1)">
+              <i data-lucide="arrow-left" class="h-4 w-4"></i>
+              上一题
+            </button>
+            <button class="inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="moveStudent(1)">
+              下一题
+              <i data-lucide="arrow-right" class="h-4 w-4"></i>
+            </button>
+          </div>
+
+          <button class="w-full rounded-lg border border-line px-3 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800" onclick="saveReview()">保存批阅</button>
+          <button class="w-full rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-brand-700" onclick="publishFeedback()">发布反馈</button>
+
+          <section class="pt-2">
+            <h3 class="mb-3 text-sm font-semibold">反馈记录</h3>
+            <div class="space-y-3">
+              ${student.history.map(item => `
+                <div class="flex gap-3 rounded-lg border border-line p-3 dark:border-slate-800">
+                  <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-600"></span>
+                  <p class="text-xs leading-5 text-slate-600 dark:text-slate-300">${item}</p>
+                </div>
+              `).join('')}
+            </div>
+          </section>
+        </div>
+      `;
+      refreshIcons();
+    }
+
+    function saveReview() {
+      const student = currentStudent();
+      student.score = Number(document.getElementById('score-input').value);
+      student.feedback = document.getElementById('feedback-input').value;
+      if (student.status !== 'pending') student.status = 'reviewed';
+      student.history.unshift(`6 月 9 日已保存评分 ${student.score}`);
+      renderStudentList();
+      renderSubmission();
+      showToast('批阅已保存');
+    }
+
+    function publishFeedback() {
+      saveReview();
+      currentStudent().history.unshift('反馈已发布，PDF 批阅文件已准备好');
+      renderSubmission();
+      showToast('反馈已发布给学生');
+    }
+
+    function moveStudent(step) {
+      const index = submissions.findIndex(student => student.id === selectedStudentId);
+      const nextIndex = Math.max(0, Math.min(submissions.length - 1, index + step));
+      selectStudent(submissions[nextIndex].id);
+    }
+
+    function updateTimer() {
+      const minutes = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+      const seconds = String(timerSeconds % 60).padStart(2, '0');
+      document.getElementById('timer-display').textContent = `${minutes}:${seconds}`;
+    }
+
+    function toggleTimer() {
+      const button = document.getElementById('timer-start');
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        button.innerHTML = '<i data-lucide="play" class="h-4 w-4"></i>开始';
+        refreshIcons();
+        return;
+      }
+      button.innerHTML = '<i data-lucide="pause" class="h-4 w-4"></i>暂停';
+      refreshIcons();
+      timerInterval = setInterval(() => {
+        timerSeconds = Math.max(0, timerSeconds - 1);
+        updateTimer();
+        if (timerSeconds === 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          button.innerHTML = '<i data-lucide="play" class="h-4 w-4"></i>开始';
+          refreshIcons();
+          showToast('课堂计时结束');
+        }
+      }, 1000);
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerSeconds = 45 * 60;
+      document.getElementById('timer-start').innerHTML = '<i data-lucide="play" class="h-4 w-4"></i>开始';
+      updateTimer();
+      refreshIcons();
+    }
+
+    function extendTimer(minutes) {
+      timerSeconds += minutes * 60;
+      updateTimer();
+      showToast(`${minutes} 分钟已添加`);
+    }
+
+    function toggleDark() {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      document.getElementById('dark-toggle').innerHTML = isDark
+        ? '<i data-lucide="sun" class="h-4 w-4"></i><span>浅色</span>'
+        : '<i data-lucide="moon" class="h-4 w-4"></i><span>深色</span>';
+      refreshIcons();
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
+    }
+
+    function refreshIcons() {
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderCourses();
+      renderCalendar();
+      renderCourse();
+      updateTimer();
+      refreshIcons();
+    });
+  </script>
+</body>
+</html>

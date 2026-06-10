@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iClassroom - Student Room</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ink: '#111827',
+            muted: '#64748B',
+            line: '#E2E8F0',
+            soft: '#F7F9FC',
+            brand: {
+              50: '#EEF6FF',
+              100: '#DBEAFE',
+              500: '#2563EB',
+              600: '#1D4ED8',
+              700: '#1E40AF'
+            },
+            violetx: {
+              50: '#F5F3FF',
+              100: '#EDE9FE',
+              500: '#7C3AED',
+              600: '#6D28D9'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    :root { color-scheme: light; }
+    html.dark { color-scheme: dark; }
+    body {
+      min-width: 1240px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    .tab.active {
+      background: #2563EB;
+      color: white;
+      border-color: #2563EB;
+    }
+    .question-dot.active {
+      background: #2563EB;
+      color: white;
+      border-color: #2563EB;
+    }
+    .drop-zone.dragging {
+      border-color: #7C3AED;
+      background: #F5F3FF;
+    }
+    .dark .drop-zone.dragging {
+      border-color: #A78BFA;
+      background: rgba(124, 58, 237, .16);
+    }
+    textarea { resize: none; }
+  </style>
+</head>
+<body class="bg-soft text-ink dark:bg-slate-950 dark:text-slate-100">
+  <div class="min-h-screen">
+    <header class="border-b border-line bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+      <div class="flex h-16 items-center justify-between px-8">
+        <div class="flex items-center gap-3">
+          <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600 to-violetx-600 text-sm font-bold text-white">iC</div>
+          <div>
+            <p class="text-sm font-semibold leading-4">iClassroom</p>
+            <p id="roomLine" class="text-xs text-muted dark:text-slate-400">QR invitation · Room FX7K91</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span id="connectionBadge" class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">Connected</span>
+          <button id="darkToggle" class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="toggleDark()">
+            <i data-lucide="moon" class="h-4 w-4"></i>
+            Dark
+          </button>
+          <div id="studentBadge" class="hidden items-center gap-2 rounded-lg border border-line bg-white py-1.5 pl-2 pr-3 dark:border-slate-800 dark:bg-slate-900">
+            <span id="studentAvatar" class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">AK</span>
+            <span>
+              <span id="studentNameLabel" class="block text-sm font-semibold leading-4">Alex Kim</span>
+              <span id="studentTeamLabel" class="block text-xs text-muted dark:text-slate-400">Team Indigo</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-[1180px] px-8 py-8">
+      <section id="joinScreen" class="grid grid-cols-[1fr_420px] gap-8">
+        <div class="rounded-lg border border-line bg-white p-8 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+          <p class="text-sm font-semibold text-brand-600 dark:text-brand-100">Scan-to-join classroom</p>
+          <h1 class="mt-3 text-4xl font-semibold tracking-normal">Industrial Design Studio</h1>
+          <p class="mt-4 max-w-2xl text-sm leading-7 text-muted dark:text-slate-400">You joined through a QR invitation. Enter a display name, choose your group, and start the current assignment. Your draft is saved in this browser during the live room.</p>
+          <div class="mt-8 grid grid-cols-3 gap-4">
+            <div class="rounded-lg bg-brand-50 p-4 dark:bg-brand-500/10">
+              <p class="text-2xl font-bold text-brand-700 dark:text-brand-100">3</p>
+              <p class="mt-1 text-xs font-semibold text-brand-700 dark:text-brand-100">Questions</p>
+            </div>
+            <div class="rounded-lg bg-violetx-50 p-4 dark:bg-violet-500/10">
+              <p class="text-2xl font-bold text-violetx-600 dark:text-violet-300">42</p>
+              <p class="mt-1 text-xs font-semibold text-violetx-600 dark:text-violet-300">Minutes left</p>
+            </div>
+            <div class="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-500/10">
+              <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">1-10</p>
+              <p class="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">Manual score</p>
+            </div>
+          </div>
+        </div>
+
+        <form class="rounded-lg border border-line bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900" onsubmit="event.preventDefault(); joinRoom();">
+          <h2 class="text-lg font-semibold">Join Room</h2>
+          <p class="mt-1 text-sm text-muted dark:text-slate-400">No account required.</p>
+          <label class="mt-5 block">
+            <span class="text-sm font-semibold">Nickname</span>
+            <input id="nicknameInput" class="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" value="Alex Kim" maxlength="24" />
+          </label>
+          <div class="mt-5">
+            <p class="text-sm font-semibold">Choose Group</p>
+            <div class="mt-2 grid gap-2">
+              <label class="group-option flex cursor-pointer items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-3 py-3 dark:border-brand-500/20 dark:bg-brand-500/10">
+                <span>
+                  <span class="block text-sm font-semibold">Team Indigo</span>
+                  <span class="block text-xs text-muted dark:text-slate-400">4 / 5 students</span>
+                </span>
+                <input type="radio" name="team" value="Team Indigo" checked />
+              </label>
+              <label class="group-option flex cursor-pointer items-center justify-between rounded-lg border border-line px-3 py-3 dark:border-slate-800">
+                <span>
+                  <span class="block text-sm font-semibold">Team Violet</span>
+                  <span class="block text-xs text-muted dark:text-slate-400">3 / 5 students</span>
+                </span>
+                <input type="radio" name="team" value="Team Violet" />
+              </label>
+              <label class="flex cursor-not-allowed items-center justify-between rounded-lg border border-line bg-slate-50 px-3 py-3 opacity-60 dark:border-slate-800 dark:bg-slate-950">
+                <span>
+                  <span class="block text-sm font-semibold">Team Azure</span>
+                  <span class="block text-xs text-muted dark:text-slate-400">Full</span>
+                </span>
+                <input type="radio" disabled />
+              </label>
+            </div>
+          </div>
+          <button class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-brand-600 to-violetx-600 px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:opacity-95" type="submit">
+            <i data-lucide="log-in" class="h-4 w-4"></i>
+            Enter Classroom
+          </button>
+        </form>
+      </section>
+
+      <section id="classroomScreen" class="hidden">
+        <section class="mb-6 grid grid-cols-[1fr_340px] gap-6">
+          <div class="rounded-lg border border-line bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-start justify-between gap-6">
+              <div>
+                <p class="text-sm font-semibold text-brand-600 dark:text-brand-100">Industrial Design Studio</p>
+                <h1 class="mt-2 text-3xl font-semibold tracking-normal">Persona Research Sprint</h1>
+                <p class="mt-2 max-w-2xl text-sm leading-6 text-muted dark:text-slate-400">Teacher: Evelyn Chen · Room FX7K91</p>
+              </div>
+              <div class="rounded-lg bg-brand-50 px-5 py-4 text-center dark:bg-brand-500/10">
+                <p class="text-xs font-bold uppercase text-brand-700 dark:text-brand-100">Remaining Time</p>
+                <p id="timer" class="mt-1 font-mono text-3xl font-bold tabular-nums text-brand-700 dark:text-brand-100">42:00</p>
+              </div>
+            </div>
+          </div>
+
+          <aside class="rounded-lg border border-line bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-semibold">Current Status</h2>
+              <span id="statusBadge" class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">In Progress</span>
+            </div>
+            <p id="statusCopy" class="mt-4 text-sm leading-6 text-muted dark:text-slate-400">Answer each question, upload supporting images, then submit once.</p>
+          </aside>
+        </section>
+
+        <section id="successBanner" class="mb-6 hidden rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <i data-lucide="check-circle-2" class="h-5 w-5"></i>
+              <div>
+                <p class="font-semibold">Submitted Successfully</p>
+                <p id="successCopy" class="text-sm opacity-80">Waiting for your teacher to review and score your work.</p>
+              </div>
+            </div>
+            <button id="teacherReviewButton" class="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800" onclick="simulateTeacherReview()">
+              <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+              Check Teacher Feedback
+            </button>
+          </div>
+        </section>
+
+        <div class="grid grid-cols-[1fr_340px] gap-6">
+          <section class="rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div class="border-b border-line p-5 dark:border-slate-800">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-lg font-semibold tracking-normal">Assignment Questions</h2>
+                  <p class="mt-1 text-sm text-muted dark:text-slate-400">Drafts save automatically in this browser.</p>
+                </div>
+                <div id="questionDots" class="flex items-center gap-2"></div>
+              </div>
+            </div>
+
+            <div class="p-5">
+              <div class="mb-5 rounded-lg bg-slate-50 p-4 dark:bg-slate-950">
+                <div class="mb-2 flex items-center justify-between">
+                  <span id="questionStep" class="text-xs font-bold uppercase text-brand-700 dark:text-brand-100">Question 1 of 3</span>
+                  <span id="questionStatus" class="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">Draft</span>
+                </div>
+                <h3 id="questionTitle" class="text-xl font-semibold tracking-normal"></h3>
+                <p id="questionPrompt" class="mt-2 text-sm leading-6 text-muted dark:text-slate-400"></p>
+              </div>
+
+              <div class="flex rounded-lg border border-line bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950">
+                <button id="textTab" class="tab active rounded-md border border-transparent px-4 py-2 text-sm font-semibold" onclick="switchTab('text')">Text Submission</button>
+                <button id="imageTab" class="tab rounded-md border border-transparent px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300" onclick="switchTab('image')">Image Upload</button>
+              </div>
+
+              <div id="textPanel" class="mt-5">
+                <label class="block">
+                  <span class="mb-2 block text-sm font-semibold">Written Response</span>
+                  <textarea id="responseText" class="h-[300px] w-full rounded-lg border border-line bg-white p-4 text-sm leading-7 outline-none transition focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" placeholder="Write your answer here..." oninput="saveCurrentAnswer()"></textarea>
+                </label>
+              </div>
+
+              <div id="imagePanel" class="mt-5 hidden">
+                <div id="dropZone" class="drop-zone flex h-[220px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-line bg-slate-50 text-center transition dark:border-slate-800 dark:bg-slate-950" onclick="document.getElementById('imageInput').click()">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm dark:bg-slate-900 dark:text-brand-100">
+                    <i data-lucide="image-plus" class="h-6 w-6"></i>
+                  </div>
+                  <p class="mt-4 text-sm font-semibold">Drag images here or click to upload</p>
+                  <p class="mt-1 text-xs text-muted dark:text-slate-400">Up to 3 images for this question, PNG or JPG</p>
+                  <input id="imageInput" class="hidden" type="file" accept="image/png,image/jpeg,image/jpg" multiple />
+                </div>
+
+                <div class="mt-5 flex items-center justify-between">
+                  <h3 class="text-sm font-semibold">Image Preview</h3>
+                  <span id="imageCount" class="text-xs font-semibold text-muted dark:text-slate-400">0 / 3 images</span>
+                </div>
+                <div id="previewGrid" class="mt-3 grid grid-cols-3 gap-3"></div>
+              </div>
+
+              <div class="mt-5 flex items-center justify-between rounded-lg bg-slate-50 p-4 dark:bg-slate-950">
+                <button id="prevButton" class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="goQuestion(-1)">
+                  <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                  Previous
+                </button>
+                <p id="submitHint" class="text-sm text-muted dark:text-slate-400">Complete all questions before submitting.</p>
+                <div class="flex items-center gap-2">
+                  <button id="nextButton" class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="goQuestion(1)">
+                    Next
+                    <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                  </button>
+                  <button id="submitButton" class="hidden inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-brand-600 to-violetx-600 px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:opacity-95" onclick="submitAssignment()">
+                    <i data-lucide="send" class="h-4 w-4"></i>
+                    Submit Assignment
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="space-y-6">
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold">Teacher Feedback</h2>
+                <span id="feedbackStatus" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">Not submitted</span>
+              </div>
+              <div id="feedbackCard" class="mt-4 rounded-lg border border-line bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"></div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-sm font-semibold">Task Progress</h2>
+              <div id="taskList" class="mt-4 space-y-2"></div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-sm font-semibold">Group Rankings</h2>
+              <div id="rankingList" class="mt-4 space-y-3"></div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-sm font-semibold">My Progress</h2>
+              <div class="mt-4 grid grid-cols-2 gap-3">
+                <div class="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-500/10">
+                  <p id="completedCount" class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">5</p>
+                  <p class="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">Completed</p>
+                </div>
+                <div class="rounded-lg bg-amber-50 p-4 dark:bg-amber-500/10">
+                  <p id="pendingCount" class="text-2xl font-bold text-amber-700 dark:text-amber-300">3</p>
+                  <p class="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-300">Pending</p>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="fixed bottom-6 right-6 hidden rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-soft dark:bg-white dark:text-slate-950"></div>
+
+  <script>
+    const maxImages = 3;
+    const storageKey = 'iclassroom-student-room-FX7K91';
+    const questions = [
+      {
+        title: 'Q1. Define the primary persona',
+        prompt: 'Describe one target learner or user. Include goals, pain points, context, and one direct observation from your research.'
+      },
+      {
+        title: 'Q2. Map one key journey',
+        prompt: 'Explain the user journey from first contact to task completion. Identify the moment where the experience breaks down.'
+      },
+      {
+        title: 'Q3. Propose one improvement',
+        prompt: 'Suggest a focused design improvement. Explain how it solves the pain point and what evidence would prove it works.'
+      }
+    ];
+
+    const rankingsBeforeReview = [
+      ['Team Indigo', 82],
+      ['Team Violet', 78],
+      ['Team Azure', 74]
+    ];
+    const rankingsAfterReview = [
+      ['Team Indigo', 91],
+      ['Team Violet', 83],
+      ['Team Azure', 76]
+    ];
+
+    let currentQuestion = 0;
+    let activeTab = 'text';
+    let remainingSeconds = 42 * 60;
+    let submitted = false;
+    let reviewed = false;
+    let student = { name: '', team: 'Team Indigo' };
+    let answers = questions.map(() => ({ text: '', images: [] }));
+
+    function refreshIcons() {
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function initials(name) {
+      return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'ST';
+    }
+
+    function toggleDark() {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      document.getElementById('darkToggle').innerHTML = isDark
+        ? '<i data-lucide="sun" class="h-4 w-4"></i>Light'
+        : '<i data-lucide="moon" class="h-4 w-4"></i>Dark';
+      refreshIcons();
+    }
+
+    function joinRoom() {
+      const name = document.getElementById('nicknameInput').value.trim();
+      if (!name) {
+        showToast('Please enter a nickname');
+        return;
+      }
+      student = {
+        name,
+        team: document.querySelector('input[name="team"]:checked')?.value || 'Team Indigo'
+      };
+      localStorage.setItem(storageKey + ':identity', JSON.stringify(student));
+      document.getElementById('joinScreen').classList.add('hidden');
+      document.getElementById('classroomScreen').classList.remove('hidden');
+      document.getElementById('studentBadge').classList.remove('hidden');
+      document.getElementById('studentBadge').classList.add('flex');
+      document.getElementById('studentNameLabel').textContent = student.name;
+      document.getElementById('studentTeamLabel').textContent = student.team;
+      document.getElementById('studentAvatar').textContent = initials(student.name);
+      loadDraft();
+      renderAll();
+      showToast('Joined classroom');
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      const isText = tab === 'text';
+      document.getElementById('textPanel').classList.toggle('hidden', !isText);
+      document.getElementById('imagePanel').classList.toggle('hidden', isText);
+      document.getElementById('textTab').classList.toggle('active', isText);
+      document.getElementById('imageTab').classList.toggle('active', !isText);
+      document.getElementById('textTab').classList.toggle('text-slate-600', !isText);
+      document.getElementById('imageTab').classList.toggle('text-slate-600', isText);
+    }
+
+    function questionDone(index) {
+      return answers[index].text.trim().length > 20 || answers[index].images.length > 0;
+    }
+
+    function saveCurrentAnswer() {
+      answers[currentQuestion].text = document.getElementById('responseText').value;
+      localStorage.setItem(storageKey + ':drafts', JSON.stringify(answers.map(answer => ({ text: answer.text }))));
+      renderQuestionNav();
+      renderProgress();
+    }
+
+    function loadDraft() {
+      try {
+        const identity = JSON.parse(localStorage.getItem(storageKey + ':identity') || 'null');
+        if (identity) student = identity;
+        const saved = JSON.parse(localStorage.getItem(storageKey + ':drafts') || '[]');
+        saved.forEach((draft, index) => {
+          if (answers[index]) answers[index].text = draft.text || '';
+        });
+      } catch (error) {
+        localStorage.removeItem(storageKey + ':drafts');
+      }
+    }
+
+    function renderAll() {
+      renderQuestion();
+      renderQuestionNav();
+      renderPreviews();
+      renderTaskList();
+      renderProgress();
+      renderRankings();
+      renderFeedback();
+      refreshIcons();
+    }
+
+    function renderQuestion() {
+      const question = questions[currentQuestion];
+      document.getElementById('questionStep').textContent = `Question ${currentQuestion + 1} of ${questions.length}`;
+      document.getElementById('questionTitle').textContent = question.title;
+      document.getElementById('questionPrompt').textContent = question.prompt;
+      document.getElementById('responseText').value = answers[currentQuestion].text;
+      document.getElementById('questionStatus').textContent = questionDone(currentQuestion) ? 'Draft saved' : 'Draft';
+      document.getElementById('prevButton').disabled = currentQuestion === 0;
+      document.getElementById('nextButton').classList.toggle('hidden', currentQuestion === questions.length - 1);
+      document.getElementById('submitButton').classList.toggle('hidden', currentQuestion !== questions.length - 1 || submitted);
+      renderPreviews();
+      switchTab(activeTab);
+    }
+
+    function renderQuestionNav() {
+      document.getElementById('questionDots').innerHTML = questions.map((question, index) => `
+        <button class="question-dot ${index === currentQuestion ? 'active' : ''} flex h-9 w-9 items-center justify-center rounded-lg border border-line text-sm font-bold dark:border-slate-800" onclick="setQuestion(${index})" title="${question.title}">
+          ${questionDone(index) ? '<i data-lucide="check" class="h-4 w-4"></i>' : index + 1}
+        </button>
+      `).join('');
+      refreshIcons();
+    }
+
+    function setQuestion(index) {
+      saveCurrentAnswer();
+      currentQuestion = index;
+      renderQuestion();
+      renderQuestionNav();
+      renderTaskList();
+    }
+
+    function goQuestion(direction) {
+      saveCurrentAnswer();
+      currentQuestion = Math.max(0, Math.min(questions.length - 1, currentQuestion + direction));
+      renderQuestion();
+      renderQuestionNav();
+      renderTaskList();
+    }
+
+    function handleFiles(files) {
+      if (submitted) return;
+      const imageFiles = [...files].filter(file => file.type.startsWith('image/'));
+      const availableSlots = maxImages - answers[currentQuestion].images.length;
+      imageFiles.slice(0, availableSlots).forEach(file => {
+        answers[currentQuestion].images.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+          name: file.name,
+          url: URL.createObjectURL(file)
+        });
+      });
+      if (imageFiles.length > availableSlots) showToast('Only 3 images can be uploaded per question');
+      renderPreviews();
+      renderQuestionNav();
+      renderTaskList();
+      renderProgress();
+    }
+
+    function renderPreviews() {
+      const images = answers[currentQuestion].images;
+      const grid = document.getElementById('previewGrid');
+      document.getElementById('imageCount').textContent = `${images.length} / 3 images`;
+      grid.innerHTML = images.map(image => `
+        <div class="overflow-hidden rounded-lg border border-line bg-white dark:border-slate-800 dark:bg-slate-950">
+          <img class="h-36 w-full object-cover" src="${image.url}" alt="${image.name}" />
+          <div class="flex items-center justify-between gap-2 p-3">
+            <span class="truncate text-xs font-semibold">${image.name}</span>
+            <button class="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800" onclick="removeImage('${image.id}')" aria-label="Remove image">
+              <i data-lucide="x" class="h-4 w-4"></i>
+            </button>
+          </div>
+        </div>
+      `).join('') || '<div class="col-span-3 rounded-lg border border-dashed border-line p-6 text-center text-sm text-muted dark:border-slate-800 dark:text-slate-400">No images uploaded for this question.</div>';
+      refreshIcons();
+    }
+
+    function removeImage(id) {
+      if (submitted) return;
+      const image = answers[currentQuestion].images.find(item => item.id === id);
+      if (image) URL.revokeObjectURL(image.url);
+      answers[currentQuestion].images = answers[currentQuestion].images.filter(item => item.id !== id);
+      renderPreviews();
+      renderQuestionNav();
+      renderTaskList();
+      renderProgress();
+    }
+
+    function renderTaskList() {
+      document.getElementById('taskList').innerHTML = questions.map((question, index) => {
+        const done = questionDone(index);
+        const active = index === currentQuestion;
+        const state = reviewed ? 'Scored' : submitted ? 'Submitted' : done ? 'Draft saved' : 'Pending';
+        const color = reviewed ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-300' : submitted ? 'text-brand-700 bg-brand-50 dark:bg-brand-500/10 dark:text-brand-100' : done ? 'text-violetx-600 bg-violetx-50 dark:bg-violet-500/10 dark:text-violet-300' : 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300';
+        return `
+          <button class="w-full rounded-lg border ${active ? 'border-brand-300' : 'border-line dark:border-slate-800'} p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800" onclick="setQuestion(${index})">
+            <div class="flex items-center justify-between gap-3">
+              <span class="truncate text-sm font-semibold">${question.title.replace(/^Q\d+\.\s*/, '')}</span>
+              <span class="shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${color}">${state}</span>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderProgress() {
+      const doneCount = questions.filter((question, index) => questionDone(index)).length;
+      document.getElementById('completedCount').textContent = reviewed ? 8 : 5 + (submitted ? 3 : doneCount);
+      document.getElementById('pendingCount').textContent = submitted ? 0 : questions.length - doneCount;
+      document.getElementById('submitHint').textContent = submitted
+        ? reviewed ? 'Teacher feedback is ready.' : 'Submitted. Waiting for teacher review.'
+        : `${doneCount} of ${questions.length} questions have draft content.`;
+    }
+
+    function renderRankings() {
+      const rankings = reviewed ? rankingsAfterReview : rankingsBeforeReview;
+      document.getElementById('rankingList').innerHTML = rankings.map(([team, score], index) => {
+        const mine = team === student.team;
+        const bg = mine ? 'bg-brand-50 dark:bg-brand-500/10' : 'bg-slate-50 dark:bg-slate-950';
+        const text = mine ? 'text-brand-700 dark:text-brand-100' : '';
+        return `
+          <div class="flex items-center justify-between rounded-lg ${bg} px-3 py-3">
+            <span class="text-sm font-semibold ${text}">${index + 1}. ${team}${mine ? ' · My Group' : ''}</span>
+            <span class="text-sm font-bold ${text}">${score}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderFeedback() {
+      const status = document.getElementById('feedbackStatus');
+      const card = document.getElementById('feedbackCard');
+      if (!submitted) {
+        status.textContent = 'Not submitted';
+        status.className = 'rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+        card.innerHTML = '<p class="text-sm leading-6 text-muted dark:text-slate-400">Submit your answers first. Teacher feedback will appear here after manual review.</p>';
+        return;
+      }
+      if (!reviewed) {
+        status.textContent = 'Waiting';
+        status.className = 'rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+        card.innerHTML = `
+          <div class="flex items-start gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i data-lucide="clock" class="h-5 w-5"></i></div>
+            <div>
+              <p class="text-sm font-semibold">Teacher review pending</p>
+              <p class="mt-1 text-sm leading-6 text-muted dark:text-slate-400">Your submission has been sent. Refresh this card after your teacher scores it.</p>
+            </div>
+          </div>
+        `;
+        refreshIcons();
+        return;
+      }
+      status.textContent = 'Scored';
+      status.className = 'rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold">Score</span>
+          <span class="rounded-full bg-brand-50 px-3 py-1 text-sm font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-100">9 / 10</span>
+        </div>
+        <p class="mt-4 text-sm leading-6 text-slate-700 dark:text-slate-300">Great structure across all three answers. Your persona has clear goals and pain points. The journey map is strongest; next time, add one direct quote to support the proposed improvement.</p>
+        <button class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="showToast('PDF feedback download started')">
+          <i data-lucide="download" class="h-4 w-4"></i>
+          Download PDF Feedback
+        </button>
+      `;
+      refreshIcons();
+    }
+
+    function submitAssignment() {
+      saveCurrentAnswer();
+      submitted = true;
+      document.getElementById('successBanner').classList.remove('hidden');
+      document.getElementById('statusBadge').textContent = 'Submitted';
+      document.getElementById('statusBadge').className = 'rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-100';
+      document.getElementById('statusCopy').textContent = 'Your answers are locked. Waiting for teacher score and comments.';
+      document.getElementById('submitButton').disabled = true;
+      document.getElementById('submitButton').classList.add('opacity-70', 'cursor-not-allowed');
+      renderAll();
+      showToast('Assignment submitted');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function simulateTeacherReview() {
+      if (!submitted) {
+        showToast('Submit first, then check feedback');
+        return;
+      }
+      reviewed = true;
+      document.getElementById('statusBadge').textContent = 'Scored';
+      document.getElementById('statusBadge').className = 'rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
+      document.getElementById('statusCopy').textContent = 'Teacher feedback is ready. You can download the PDF review.';
+      document.getElementById('successCopy').textContent = 'Teacher feedback is ready. Score, comments, and PDF review are available.';
+      document.getElementById('teacherReviewButton').innerHTML = '<i data-lucide="eye" class="h-4 w-4"></i>Feedback Ready';
+      renderAll();
+      showToast('Teacher feedback is ready');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
+    }
+
+    function updateTimer() {
+      const minutes = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
+      const seconds = String(remainingSeconds % 60).padStart(2, '0');
+      const timer = document.getElementById('timer');
+      if (timer) timer.textContent = `${minutes}:${seconds}`;
+      if (remainingSeconds > 0) remainingSeconds -= 1;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('imageInput');
+      const dropZone = document.getElementById('dropZone');
+      const savedIdentity = JSON.parse(localStorage.getItem(storageKey + ':identity') || 'null');
+      if (savedIdentity?.name) {
+        document.getElementById('nicknameInput').value = savedIdentity.name;
+      }
+
+      input.addEventListener('change', event => handleFiles(event.target.files));
+      dropZone.addEventListener('dragover', event => {
+        event.preventDefault();
+        dropZone.classList.add('dragging');
+      });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
+      dropZone.addEventListener('drop', event => {
+        event.preventDefault();
+        dropZone.classList.remove('dragging');
+        handleFiles(event.dataTransfer.files);
+      });
+
+      renderFeedback();
+      updateTimer();
+      setInterval(updateTimer, 1000);
+      refreshIcons();
+    });
+  </script>
+</body>
+</html>

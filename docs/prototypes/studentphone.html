@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>iClassroom - Student Room iPhone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ink: '#111827',
+            muted: '#64748B',
+            line: '#E2E8F0',
+            soft: '#F7F9FC',
+            brand: { 50: '#EEF6FF', 100: '#DBEAFE', 500: '#2563EB', 600: '#1D4ED8', 700: '#1E40AF' },
+            violetx: { 50: '#F5F3FF', 100: '#EDE9FE', 500: '#7C3AED', 600: '#6D28D9' }
+          },
+          boxShadow: {
+            soft: '0 18px 45px rgba(15, 23, 42, .12)'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    :root { color-scheme: light; }
+    html.dark { color-scheme: dark; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    body { background: #EAF1FF; }
+    .dark body { background: #020617; }
+    .app {
+      height: 100dvh;
+      max-width: 430px;
+      margin: 0 auto;
+      overflow: hidden;
+      background: #F7F9FC;
+      color: #111827;
+      position: relative;
+    }
+    .dark .app { background: #020617; color: #F8FAFC; }
+    .screen {
+      display: none;
+      height: calc(100dvh - 132px);
+      padding: 14px 16px 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding-bottom: 18px;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      animation: in .22s ease-out both;
+    }
+    .screen.active { display: block; }
+    .card {
+      border: 1px solid #E2E8F0;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, .92);
+      box-shadow: 0 18px 45px rgba(15, 23, 42, .10);
+    }
+    .dark .card {
+      border-color: #1E293B;
+      background: rgba(15, 23, 42, .92);
+    }
+    .btn {
+      min-height: 48px;
+      border-radius: 18px;
+      font-weight: 800;
+      touch-action: manipulation;
+    }
+    .seg.active,
+    .dot.active {
+      background: #2563EB;
+      color: white;
+      border-color: #2563EB;
+    }
+    textarea { resize: none; }
+    #screen-question .card {
+      min-height: 100%;
+      height: auto;
+    }
+    #toast {
+      left: 16px;
+      right: 16px;
+      bottom: 86px;
+      z-index: 80;
+      text-align: center;
+    }
+    @keyframes in {
+      from { opacity: 0; transform: translateX(14px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app text-ink dark:text-slate-100">
+    <header class="h-[74px] border-b border-line bg-white/90 px-4 pt-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-violetx-600 text-sm font-black text-white">iC</div>
+          <div>
+            <p class="text-sm font-black leading-4">iClassroom</p>
+            <p id="roomLine" class="text-xs text-muted dark:text-slate-400">QR invitation · Room FX7K91</p>
+          </div>
+        </div>
+        <button id="darkToggle" class="btn h-10 min-h-0 rounded-2xl border border-line bg-white px-3 text-xs font-black text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" onclick="toggleDark()">Dark</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="screen-join" class="screen active">
+        <div class="card p-5">
+          <div class="flex items-center justify-between">
+            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">Connected</span>
+            <span class="text-xs font-bold text-muted dark:text-slate-400">No account required</span>
+          </div>
+          <p class="mt-5 text-sm font-bold text-brand-600 dark:text-brand-100">Scan-to-join classroom</p>
+          <h1 class="mt-2 text-3xl font-black leading-tight">Industrial Design Studio</h1>
+          <p class="mt-3 text-sm leading-6 text-muted dark:text-slate-400">You joined through a QR invitation. Enter a display name, choose your group, and start the current assignment.</p>
+          <div class="mt-5 grid grid-cols-3 gap-2">
+            <div class="rounded-2xl bg-brand-50 p-3 dark:bg-brand-500/10"><p class="text-2xl font-black text-brand-700 dark:text-brand-100">3</p><p class="text-[11px] font-bold text-brand-700 dark:text-brand-100">Questions</p></div>
+            <div class="rounded-2xl bg-violetx-50 p-3 dark:bg-violet-500/10"><p class="text-2xl font-black text-violetx-600 dark:text-violet-300">42</p><p class="text-[11px] font-bold text-violetx-600 dark:text-violet-300">Minutes left</p></div>
+            <div class="rounded-2xl bg-emerald-50 p-3 dark:bg-emerald-500/10"><p class="text-2xl font-black text-emerald-700 dark:text-emerald-300">1-10</p><p class="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Manual score</p></div>
+          </div>
+        </div>
+        <div class="card mt-3 p-5">
+          <label class="block text-sm font-black">Nickname</label>
+          <input id="nicknameInput" class="mt-2 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base font-bold outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" value="Alex Kim" maxlength="24" />
+          <p class="mt-4 text-sm font-black">Choose Group</p>
+          <div class="mt-2 grid gap-2">
+            <label class="group-option flex items-center justify-between rounded-2xl border border-brand-200 bg-brand-50 px-3 py-3 dark:border-brand-500/20 dark:bg-brand-500/10"><span><span class="block text-sm font-black">Team Indigo</span><span class="block text-xs text-muted dark:text-slate-400">4 / 5 students</span></span><input type="radio" name="team" value="Team Indigo" checked /></label>
+            <label class="group-option flex items-center justify-between rounded-2xl border border-line px-3 py-3 dark:border-slate-800"><span><span class="block text-sm font-black">Team Violet</span><span class="block text-xs text-muted dark:text-slate-400">3 / 5 students</span></span><input type="radio" name="team" value="Team Violet" /></label>
+            <label class="flex cursor-not-allowed items-center justify-between rounded-2xl border border-line bg-slate-50 px-3 py-3 opacity-60 dark:border-slate-800 dark:bg-slate-950"><span><span class="block text-sm font-black">Team Azure</span><span class="block text-xs text-muted dark:text-slate-400">Full</span></span><input type="radio" disabled /></label>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-home" class="screen">
+        <div class="card p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-bold text-brand-600 dark:text-brand-100">Industrial Design Studio</p>
+              <h1 class="mt-2 text-3xl font-black leading-tight">Persona Research Sprint</h1>
+              <p class="mt-2 text-sm text-muted dark:text-slate-400">Teacher: Evelyn Chen · Room FX7K91</p>
+            </div>
+            <span id="statusBadge" class="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">In Progress</span>
+          </div>
+          <div class="mt-5 rounded-3xl bg-brand-50 p-5 text-center dark:bg-brand-500/10">
+            <p class="text-xs font-black uppercase text-brand-700 dark:text-brand-100">Remaining Time</p>
+            <p id="timer" class="mt-1 font-mono text-5xl font-black tabular-nums text-brand-700 dark:text-brand-100">42:00</p>
+          </div>
+          <p id="statusCopy" class="mt-4 text-sm leading-6 text-muted dark:text-slate-400">Answer each question, upload supporting images, then submit once.</p>
+        </div>
+        <div class="card mt-3 p-5">
+          <h2 class="text-lg font-black">Assignment Questions</h2>
+          <p class="mt-1 text-sm text-muted dark:text-slate-400">Drafts save automatically in this browser.</p>
+          <div id="homeTaskList" class="mt-4 grid gap-2"></div>
+        </div>
+      </section>
+
+      <section id="screen-question" class="screen">
+        <div class="card p-5">
+          <div class="flex items-center justify-between">
+            <span id="questionStep" class="text-xs font-black uppercase text-brand-700 dark:text-brand-100">Question 1 of 3</span>
+            <span id="questionStatus" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">Draft</span>
+          </div>
+          <div id="questionDots" class="mt-4 flex items-center gap-2"></div>
+          <h2 id="questionTitle" class="mt-4 text-2xl font-black leading-tight"></h2>
+          <p id="questionPrompt" class="mt-2 text-sm leading-6 text-muted dark:text-slate-400"></p>
+          <div class="mt-4 flex rounded-2xl border border-line bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950">
+            <button id="textTab" class="seg active btn flex-1 min-h-0 py-2 text-sm" onclick="switchTab('text')">Text Submission</button>
+            <button id="imageTab" class="seg btn flex-1 min-h-0 py-2 text-sm text-slate-600 dark:text-slate-300" onclick="switchTab('image')">Image Upload</button>
+          </div>
+          <div id="textPanel" class="mt-4">
+            <label class="block">
+              <span class="mb-2 block text-sm font-black">Written Response</span>
+              <textarea id="responseText" class="h-40 w-full rounded-2xl border border-line bg-white p-4 text-base leading-6 outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" placeholder="Write your answer here..." oninput="saveCurrentAnswer()"></textarea>
+            </label>
+          </div>
+          <div id="imagePanel" class="mt-4 hidden">
+            <div id="dropZone" class="flex h-36 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-line bg-slate-50 text-center dark:border-slate-800 dark:bg-slate-950" onclick="document.getElementById('imageInput').click()">
+              <i data-lucide="image-plus" class="h-7 w-7 text-brand-600 dark:text-brand-100"></i>
+              <p class="mt-2 text-sm font-black">Click to upload</p>
+              <p class="text-xs text-muted dark:text-slate-400">Up to 3 images, PNG or JPG</p>
+              <input id="imageInput" class="hidden" type="file" accept="image/png,image/jpeg,image/jpg" multiple />
+            </div>
+            <div class="mt-3 flex items-center justify-between"><h3 class="text-sm font-black">Image Preview</h3><span id="imageCount" class="text-xs font-bold text-muted dark:text-slate-400">0 / 3 images</span></div>
+            <div id="previewGrid" class="mt-2 grid grid-cols-3 gap-2"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-success" class="screen">
+        <div class="card border-emerald-200 bg-emerald-50 p-6 text-center text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+          <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 text-white shadow-soft">
+            <i data-lucide="check" class="h-10 w-10"></i>
+          </div>
+          <h2 class="mt-5 text-2xl font-black">Submitted Successfully</h2>
+          <p id="successCopy" class="mt-2 text-sm leading-6 opacity-80">Waiting for your teacher to review and score your work.</p>
+          <button id="teacherReviewButton" class="btn mt-5 w-full bg-white text-sm text-emerald-800 dark:bg-slate-900 dark:text-emerald-300" onclick="simulateTeacherReview()">Check Teacher Feedback</button>
+        </div>
+        <div class="card mt-3 p-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-black">Teacher Feedback</h2>
+            <span id="feedbackStatus" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">Not submitted</span>
+          </div>
+          <div id="feedbackCard" class="mt-4 rounded-2xl border border-line bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"></div>
+        </div>
+      </section>
+
+      <section id="screen-rankings" class="screen">
+        <div class="card p-5">
+          <h2 class="text-lg font-black">Group Rankings</h2>
+          <div id="rankingList" class="mt-4 space-y-3"></div>
+        </div>
+        <div class="card mt-3 p-5">
+          <h2 class="text-lg font-black">My Progress</h2>
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="rounded-2xl bg-emerald-50 p-4 dark:bg-emerald-500/10"><p id="completedCount" class="text-3xl font-black text-emerald-700 dark:text-emerald-300">5</p><p class="text-xs font-bold text-emerald-700 dark:text-emerald-300">Completed</p></div>
+            <div class="rounded-2xl bg-amber-50 p-4 dark:bg-amber-500/10"><p id="pendingCount" class="text-3xl font-black text-amber-700 dark:text-amber-300">3</p><p class="text-xs font-bold text-amber-700 dark:text-amber-300">Pending</p></div>
+          </div>
+          <h2 class="mt-5 text-lg font-black">Task Progress</h2>
+          <div id="taskList" class="mt-3 space-y-2"></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="absolute bottom-0 left-0 right-0 grid h-[58px] grid-cols-[88px_1fr_88px] items-center gap-2 border-t border-line bg-white/95 px-4 pb-2 pt-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+      <button id="backButton" class="btn min-h-0 bg-slate-100 text-sm text-slate-700 disabled:opacity-35 dark:bg-slate-800 dark:text-slate-200" onclick="goBack()">Back</button>
+      <p id="pageLabel" class="text-center text-xs font-black text-muted dark:text-slate-400">Join Room</p>
+      <button id="nextButton" class="btn min-h-0 bg-gradient-to-r from-brand-600 to-violetx-600 text-sm text-white" onclick="goNext()">Next</button>
+    </nav>
+
+    <div id="toast" class="fixed hidden rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white shadow-soft dark:bg-white dark:text-slate-950"></div>
+  </div>
+
+  <script>
+    const maxImages = 3;
+    const storageKey = 'iclassroom-student-room-FX7K91';
+    const questions = [
+      { title: 'Q1. Define the primary persona', prompt: 'Describe one target learner or user. Include goals, pain points, context, and one direct observation from your research.' },
+      { title: 'Q2. Map one key journey', prompt: 'Explain the user journey from first contact to task completion. Identify the moment where the experience breaks down.' },
+      { title: 'Q3. Propose one improvement', prompt: 'Suggest a focused design improvement. Explain how it solves the pain point and what evidence would prove it works.' }
+    ];
+    const rankingsBeforeReview = [['Team Indigo', 82], ['Team Violet', 78], ['Team Azure', 74]];
+    const rankingsAfterReview = [['Team Indigo', 91], ['Team Violet', 83], ['Team Azure', 76]];
+    const flow = ['join', 'home', 'question', 'success', 'rankings'];
+
+    let screen = 'join';
+    let currentQuestion = 0;
+    let activeTab = 'text';
+    let remainingSeconds = 42 * 60;
+    let submitted = false;
+    let reviewed = false;
+    let student = { name: '', team: 'Team Indigo' };
+    let answers = questions.map(() => ({ text: '', images: [] }));
+
+    function refreshIcons() { if (window.lucide) window.lucide.createIcons(); }
+    function initials(name) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'ST'; }
+
+    function toggleDark() {
+      document.documentElement.classList.toggle('dark');
+      document.getElementById('darkToggle').textContent = document.documentElement.classList.contains('dark') ? 'Light' : 'Dark';
+    }
+
+    function setScreen(name) {
+      screen = name;
+      document.querySelectorAll('.screen').forEach(item => item.classList.toggle('active', item.id === `screen-${name}`));
+      renderAll();
+    }
+
+    function goNext() {
+      if (screen === 'join') return joinRoom();
+      if (screen === 'rankings') return setScreen('home');
+      if (screen === 'question') {
+        saveCurrentAnswer();
+        if (currentQuestion < questions.length - 1) {
+          currentQuestion += 1;
+          renderAll();
+          return;
+        }
+        if (!submitted) return submitAssignment();
+      }
+      const index = flow.indexOf(screen);
+      if (index < flow.length - 1) setScreen(flow[index + 1]);
+    }
+
+    function goBack() {
+      if (screen === 'question' && currentQuestion > 0) {
+        saveCurrentAnswer();
+        currentQuestion -= 1;
+        renderAll();
+        return;
+      }
+      const index = flow.indexOf(screen);
+      if (index > 0) setScreen(flow[index - 1]);
+    }
+
+    function joinRoom() {
+      const name = document.getElementById('nicknameInput').value.trim();
+      if (!name) return showToast('Please enter a nickname');
+      student = { name, team: document.querySelector('input[name="team"]:checked')?.value || 'Team Indigo' };
+      localStorage.setItem(storageKey + ':identity', JSON.stringify(student));
+      loadDraft();
+      showToast('Joined classroom');
+      setScreen('home');
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      const text = tab === 'text';
+      document.getElementById('textPanel').classList.toggle('hidden', !text);
+      document.getElementById('imagePanel').classList.toggle('hidden', text);
+      document.getElementById('textTab').classList.toggle('active', text);
+      document.getElementById('imageTab').classList.toggle('active', !text);
+    }
+
+    function questionDone(index) {
+      return answers[index].text.trim().length > 20 || answers[index].images.length > 0;
+    }
+
+    function saveCurrentAnswer() {
+      const input = document.getElementById('responseText');
+      if (input) answers[currentQuestion].text = input.value;
+      localStorage.setItem(storageKey + ':drafts', JSON.stringify(answers.map(answer => ({ text: answer.text }))));
+      renderProgress();
+    }
+
+    function loadDraft() {
+      try {
+        const identity = JSON.parse(localStorage.getItem(storageKey + ':identity') || 'null');
+        if (identity) student = identity;
+        const saved = JSON.parse(localStorage.getItem(storageKey + ':drafts') || '[]');
+        saved.forEach((draft, index) => { if (answers[index]) answers[index].text = draft.text || ''; });
+      } catch {
+        localStorage.removeItem(storageKey + ':drafts');
+      }
+    }
+
+    function renderAll() {
+      renderQuestion();
+      renderTaskList();
+      renderProgress();
+      renderRankings();
+      renderFeedback();
+      renderNav();
+      refreshIcons();
+    }
+
+    function renderQuestion() {
+      const question = questions[currentQuestion];
+      document.getElementById('questionStep').textContent = `Question ${currentQuestion + 1} of ${questions.length}`;
+      document.getElementById('questionTitle').textContent = question.title;
+      document.getElementById('questionPrompt').textContent = question.prompt;
+      document.getElementById('responseText').value = answers[currentQuestion].text;
+      document.getElementById('questionStatus').textContent = questionDone(currentQuestion) ? 'Draft saved' : 'Draft';
+      document.getElementById('questionDots').innerHTML = questions.map((_, index) => `
+        <button class="dot ${index === currentQuestion ? 'active' : ''} flex h-10 w-10 items-center justify-center rounded-2xl border border-line text-sm font-black dark:border-slate-800" onclick="setQuestion(${index})">${questionDone(index) ? '<i data-lucide="check" class="h-4 w-4"></i>' : index + 1}</button>
+      `).join('');
+      renderPreviews();
+      switchTab(activeTab);
+    }
+
+    function setQuestion(index) {
+      saveCurrentAnswer();
+      currentQuestion = index;
+      setScreen('question');
+    }
+
+    function handleFiles(files) {
+      if (submitted) return;
+      const imageFiles = [...files].filter(file => file.type.startsWith('image/'));
+      const availableSlots = maxImages - answers[currentQuestion].images.length;
+      imageFiles.slice(0, availableSlots).forEach(file => {
+        answers[currentQuestion].images.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+          name: file.name,
+          url: URL.createObjectURL(file)
+        });
+      });
+      if (imageFiles.length > availableSlots) showToast('Only 3 images can be uploaded per question');
+      renderAll();
+    }
+
+    function renderPreviews() {
+      const images = answers[currentQuestion].images;
+      document.getElementById('imageCount').textContent = `${images.length} / 3 images`;
+      document.getElementById('previewGrid').innerHTML = images.map(image => `
+        <div class="relative overflow-hidden rounded-2xl border border-line bg-white dark:border-slate-800 dark:bg-slate-950">
+          <img class="h-20 w-full object-cover" src="${image.url}" alt="${image.name}" />
+          <button class="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-slate-600" onclick="removeImage('${image.id}')" aria-label="Remove image"><i data-lucide="x" class="h-3 w-3"></i></button>
+        </div>
+      `).join('') || '<div class="col-span-3 rounded-2xl border border-dashed border-line p-4 text-center text-xs text-muted dark:border-slate-800 dark:text-slate-400">No images uploaded for this question.</div>';
+    }
+
+    function removeImage(id) {
+      if (submitted) return;
+      const image = answers[currentQuestion].images.find(item => item.id === id);
+      if (image) URL.revokeObjectURL(image.url);
+      answers[currentQuestion].images = answers[currentQuestion].images.filter(item => item.id !== id);
+      renderAll();
+    }
+
+    function renderTaskList() {
+      const html = questions.map((question, index) => {
+        const state = reviewed ? 'Scored' : submitted ? 'Submitted' : questionDone(index) ? 'Draft saved' : 'Pending';
+        return `<button class="w-full rounded-2xl border border-line p-3 text-left dark:border-slate-800" onclick="setQuestion(${index})"><div class="flex items-center justify-between gap-3"><span class="truncate text-sm font-black">${question.title.replace(/^Q\d+\.\s*/, '')}</span><span class="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">${state}</span></div></button>`;
+      }).join('');
+      document.getElementById('taskList').innerHTML = html;
+      document.getElementById('homeTaskList').innerHTML = html;
+    }
+
+    function renderProgress() {
+      const doneCount = questions.filter((_, index) => questionDone(index)).length;
+      document.getElementById('completedCount').textContent = reviewed ? 8 : 5 + (submitted ? 3 : doneCount);
+      document.getElementById('pendingCount').textContent = submitted ? 0 : questions.length - doneCount;
+    }
+
+    function renderRankings() {
+      const rankings = reviewed ? rankingsAfterReview : rankingsBeforeReview;
+      document.getElementById('rankingList').innerHTML = rankings.map(([team, score], index) => {
+        const mine = team === student.team;
+        return `<div class="rounded-2xl ${mine ? 'bg-brand-50 dark:bg-brand-500/10' : 'bg-slate-50 dark:bg-slate-950'} p-3"><div class="flex items-center justify-between"><span class="text-sm font-black">${index + 1}. ${team}${mine ? ' · My Group' : ''}</span><span class="text-sm font-black">${score}</span></div><div class="mt-2 h-2 rounded-full bg-white dark:bg-slate-800"><div class="h-full rounded-full bg-gradient-to-r from-brand-600 to-violetx-600" style="width:${score}%"></div></div></div>`;
+      }).join('');
+    }
+
+    function renderFeedback() {
+      const status = document.getElementById('feedbackStatus');
+      const card = document.getElementById('feedbackCard');
+      if (!submitted) {
+        status.textContent = 'Not submitted';
+        card.innerHTML = '<p class="text-sm leading-6 text-muted dark:text-slate-400">Submit your answers first. Teacher feedback will appear here after manual review.</p>';
+        return;
+      }
+      if (!reviewed) {
+        status.textContent = 'Waiting';
+        card.innerHTML = '<p class="text-sm font-black">Teacher review pending</p><p class="mt-1 text-sm leading-6 text-muted dark:text-slate-400">Your submission has been sent. Refresh this card after your teacher scores it.</p>';
+        return;
+      }
+      status.textContent = 'Scored';
+      card.innerHTML = `<div class="flex items-center justify-between"><span class="text-sm font-black">Score</span><span class="rounded-full bg-brand-50 px-3 py-1 text-sm font-black text-brand-700 dark:bg-brand-500/10 dark:text-brand-100">9 / 10</span></div><p class="mt-4 text-sm leading-6 text-slate-700 dark:text-slate-300">Great structure across all three answers. Your persona has clear goals and pain points. The journey map is strongest; next time, add one direct quote to support the proposed improvement.</p><button class="btn mt-4 w-full border border-line bg-white text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" onclick="showToast('PDF feedback download started')">Download PDF Feedback</button>`;
+    }
+
+    function submitAssignment() {
+      saveCurrentAnswer();
+      submitted = true;
+      document.getElementById('statusBadge').textContent = 'Submitted';
+      document.getElementById('statusCopy').textContent = 'Your answers are locked. Waiting for teacher score and comments.';
+      showToast('Assignment submitted');
+      setScreen('success');
+    }
+
+    function simulateTeacherReview() {
+      if (!submitted) return showToast('Submit first, then check feedback');
+      reviewed = true;
+      document.getElementById('statusBadge').textContent = 'Scored';
+      document.getElementById('statusCopy').textContent = 'Teacher feedback is ready. You can download the PDF review.';
+      document.getElementById('successCopy').textContent = 'Teacher feedback is ready. Score, comments, and PDF review are available.';
+      document.getElementById('teacherReviewButton').textContent = 'Feedback Ready';
+      renderAll();
+      showToast('Teacher feedback is ready');
+    }
+
+    function renderNav() {
+      const label = {
+        join: 'Join Room',
+        home: 'Classroom Home',
+        question: `Question ${currentQuestion + 1} / 3`,
+        success: 'Submitted & Feedback',
+        rankings: 'Rankings & Progress'
+      };
+      document.getElementById('pageLabel').textContent = label[screen];
+      document.getElementById('backButton').disabled = screen === 'join';
+      const next = document.getElementById('nextButton');
+      next.textContent = screen === 'join' ? 'Enter' : screen === 'question' && currentQuestion === questions.length - 1 && !submitted ? 'Submit' : screen === 'rankings' ? 'Done' : 'Next';
+      next.disabled = false;
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
+    }
+
+    function updateTimer() {
+      const minutes = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
+      const seconds = String(remainingSeconds % 60).padStart(2, '0');
+      document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+      if (remainingSeconds > 0) remainingSeconds -= 1;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedIdentity = JSON.parse(localStorage.getItem(storageKey + ':identity') || 'null');
+      if (savedIdentity?.name) document.getElementById('nicknameInput').value = savedIdentity.name;
+      document.getElementById('imageInput').addEventListener('change', event => handleFiles(event.target.files));
+      loadDraft();
+      updateTimer();
+      setInterval(updateTimer, 1000);
+      renderAll();
+    });
+  </script>
+</body>
+</html>
