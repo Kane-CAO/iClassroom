@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iClassroom - 学生课堂</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ink: '#111827',
+            muted: '#64748B',
+            line: '#E2E8F0',
+            soft: '#F7F9FC',
+            brand: {
+              50: '#EEF6FF',
+              100: '#DBEAFE',
+              500: '#2563EB',
+              600: '#1D4ED8',
+              700: '#1E40AF'
+            },
+            violetx: {
+              50: '#F5F3FF',
+              100: '#EDE9FE',
+              500: '#7C3AED',
+              600: '#6D28D9'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    :root { color-scheme: light; }
+    html.dark { color-scheme: dark; }
+    body {
+      min-width: 1240px;
+      font-family: "Alibaba PuHuiTi 3.0", "Alibaba PuHuiTi", "Alibaba Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Helvetica Neue", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+    .tab.active {
+      background: #2563EB;
+      color: white;
+      border-color: #2563EB;
+    }
+    .question-dot.active {
+      background: #2563EB;
+      color: white;
+      border-color: #2563EB;
+    }
+    .drop-zone.dragging {
+      border-color: #7C3AED;
+      background: #F5F3FF;
+    }
+    .dark .drop-zone.dragging {
+      border-color: #A78BFA;
+      background: rgba(124, 58, 237, .16);
+    }
+    textarea { resize: none; }
+
+    /* 平板格式：内容与 student.html 一致，并适配 iPad/Android 平板宽度。 */
+    body { min-width: 768px; }
+    main {
+      max-width: 1024px !important;
+      padding-left: 24px !important;
+      padding-right: 24px !important;
+      padding-top: 24px !important;
+    }
+    header > div {
+      height: auto !important;
+      min-height: 72px;
+      padding-left: 24px !important;
+      padding-right: 24px !important;
+      gap: 16px;
+    }
+    #joinScreen {
+      grid-template-columns: minmax(0, 1fr) 360px !important;
+      gap: 24px !important;
+    }
+    #classroomScreen > section:first-child {
+      grid-template-columns: minmax(0, 1fr) 300px !important;
+      gap: 20px !important;
+    }
+    #classroomScreen > div.grid {
+      grid-template-columns: minmax(0, 1fr) 300px !important;
+      gap: 20px !important;
+    }
+    #textPanel textarea { height: 260px !important; }
+    #dropZone { height: 200px !important; }
+    .tab,
+    #prevButton,
+    #nextButton,
+    #submitButton,
+    #teacherReviewButton {
+      min-height: 44px;
+    }
+    #toast {
+      right: 24px !important;
+      bottom: 24px !important;
+    }
+
+    @media (max-width: 860px) {
+      body { min-width: 744px; }
+      main {
+        padding-left: 18px !important;
+        padding-right: 18px !important;
+      }
+      #joinScreen,
+      #classroomScreen > section:first-child,
+      #classroomScreen > div.grid {
+        gap: 16px !important;
+      }
+      #studentBadge {
+        max-width: 190px;
+      }
+      #studentNameLabel,
+      #studentTeamLabel {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    /* iPad 触控优化：更大的控件、更柔和的卡片和 App 风格间距。 */
+    body {
+      background:
+        radial-gradient(circle at 12% 8%, rgba(37, 99, 235, .12), transparent 30%),
+        radial-gradient(circle at 88% 18%, rgba(124, 58, 237, .12), transparent 28%),
+        #F7F9FC;
+    }
+    .dark body {
+      background:
+        radial-gradient(circle at 12% 8%, rgba(37, 99, 235, .22), transparent 30%),
+        radial-gradient(circle at 88% 18%, rgba(124, 58, 237, .18), transparent 28%),
+        #020617;
+    }
+    header {
+      border-bottom: 0 !important;
+      background: transparent !important;
+      padding: 14px 18px 0;
+    }
+    header > div {
+      border: 1px solid rgba(226, 232, 240, .9);
+      border-radius: 24px;
+      background: rgba(255, 255, 255, .88);
+      box-shadow: 0 18px 50px rgba(15, 23, 42, .08);
+    }
+    .dark header > div {
+      border-color: rgba(30, 41, 59, .9);
+      background: rgba(15, 23, 42, .86);
+    }
+    .rounded-lg {
+      border-radius: 22px !important;
+    }
+    .rounded-md {
+      border-radius: 16px !important;
+    }
+    .shadow-soft {
+      box-shadow: 0 20px 55px rgba(15, 23, 42, .10) !important;
+    }
+    button,
+    input,
+    textarea,
+    .group-option {
+      border-radius: 18px !important;
+    }
+    button {
+      min-height: 48px;
+      touch-action: manipulation;
+    }
+    #darkToggle,
+    #teacherReviewButton,
+    #prevButton,
+    #nextButton,
+    #submitButton {
+      border-radius: 999px !important;
+      padding-left: 18px !important;
+      padding-right: 18px !important;
+    }
+    #joinScreen form button[type="submit"],
+    #submitButton {
+      min-height: 56px;
+      font-size: 15px !important;
+      box-shadow: 0 14px 30px rgba(37, 99, 235, .25) !important;
+    }
+    #textTab,
+    #imageTab {
+      flex: 1;
+      border-radius: 16px !important;
+      min-height: 48px;
+      justify-content: center;
+    }
+    #textTab.active,
+    #imageTab.active {
+      box-shadow: 0 10px 24px rgba(37, 99, 235, .22);
+    }
+    #questionDots .question-dot {
+      height: 46px;
+      width: 46px;
+      border-radius: 16px !important;
+    }
+    #timer {
+      font-size: 40px !important;
+    }
+    #dropZone {
+      border-radius: 24px !important;
+      background: rgba(248, 250, 252, .86) !important;
+    }
+    .dark #dropZone {
+      background: rgba(2, 6, 23, .66) !important;
+    }
+    #previewGrid > div {
+      border-radius: 18px !important;
+    }
+    #rankingList > div,
+    #taskList button {
+      border-radius: 18px !important;
+      min-height: 54px;
+    }
+
+    /* 平板字体平衡：保持触控目标足够大，同时避免文字过大。 */
+    h1.text-4xl {
+      font-size: 2rem !important;
+      line-height: 1.15 !important;
+    }
+    h1.text-3xl,
+    h2.text-3xl {
+      font-size: 1.65rem !important;
+      line-height: 1.2 !important;
+    }
+    h2.text-lg,
+    h3.text-lg {
+      font-size: 1rem !important;
+      line-height: 1.35 !important;
+    }
+    .text-2xl {
+      font-size: 1.35rem !important;
+      line-height: 1.25 !important;
+    }
+    .text-xl {
+      font-size: 1.12rem !important;
+      line-height: 1.35 !important;
+    }
+    .text-lg {
+      font-size: 1rem !important;
+      line-height: 1.45 !important;
+    }
+    #timer {
+      font-size: 34px !important;
+    }
+    main {
+      font-size: 14px;
+    }
+    .p-8 {
+      padding: 1.5rem !important;
+    }
+    .p-6 {
+      padding: 1.25rem !important;
+    }
+    .p-5 {
+      padding: 1.1rem !important;
+    }
+    #textPanel textarea {
+      font-size: 14px !important;
+      line-height: 1.65 !important;
+    }
+  </style>
+</head>
+<body class="bg-soft text-ink dark:bg-slate-950 dark:text-slate-100">
+  <div class="min-h-screen">
+    <header class="border-b border-line bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+      <div class="flex h-16 items-center justify-between px-8">
+        <div class="flex items-center gap-3">
+          <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600 to-violetx-600 text-sm font-bold text-white">iC</div>
+          <div>
+            <p class="text-sm font-semibold leading-4">iClassroom</p>
+            <p id="roomLine" class="text-xs text-muted dark:text-slate-400">扫码邀请 · 房间 FX7K91</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span id="connectionBadge" class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">已连接</span>
+          <button id="darkToggle" class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="toggleDark()">
+            <i data-lucide="moon" class="h-4 w-4"></i>
+            深色
+          </button>
+          <div id="studentBadge" class="hidden items-center gap-2 rounded-lg border border-line bg-white py-1.5 pl-2 pr-3 dark:border-slate-800 dark:bg-slate-900">
+            <span id="studentAvatar" class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">AK</span>
+            <span>
+              <span id="studentNameLabel" class="block text-sm font-semibold leading-4">李明</span>
+              <span id="studentTeamLabel" class="block text-xs text-muted dark:text-slate-400">靛蓝组</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-[1180px] px-8 py-8">
+      <section id="joinScreen" class="grid grid-cols-[1fr_420px] gap-8">
+        <div class="rounded-lg border border-line bg-white p-8 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+          <p class="text-sm font-semibold text-brand-600 dark:text-brand-100">扫码加入课堂</p>
+          <h1 class="mt-3 text-4xl font-semibold tracking-normal">工业设计工作室</h1>
+          <p class="mt-4 max-w-2xl text-sm leading-7 text-muted dark:text-slate-400">你已通过二维码邀请加入课堂。请输入显示名称、选择小组，并开始当前作业。直播课堂期间，草稿会保存在此浏览器中。</p>
+          <div class="mt-8 grid grid-cols-3 gap-4">
+            <div class="rounded-lg bg-brand-50 p-4 dark:bg-brand-500/10">
+              <p class="text-2xl font-bold text-brand-700 dark:text-brand-100">3</p>
+              <p class="mt-1 text-xs font-semibold text-brand-700 dark:text-brand-100">题目</p>
+            </div>
+            <div class="rounded-lg bg-violetx-50 p-4 dark:bg-violet-500/10">
+              <p class="text-2xl font-bold text-violetx-600 dark:text-violet-300">42</p>
+              <p class="mt-1 text-xs font-semibold text-violetx-600 dark:text-violet-300">剩余分钟</p>
+            </div>
+            <div class="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-500/10">
+              <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">1-10</p>
+              <p class="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">人工评分</p>
+            </div>
+          </div>
+        </div>
+
+        <form class="rounded-lg border border-line bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900" onsubmit="event.preventDefault(); joinRoom();">
+          <h2 class="text-lg font-semibold">加入课堂</h2>
+          <p class="mt-1 text-sm text-muted dark:text-slate-400">无需账号.</p>
+          <label class="mt-5 block">
+            <span class="text-sm font-semibold">昵称</span>
+            <input id="nicknameInput" class="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" value="李明" maxlength="24" />
+          </label>
+          <div class="mt-5">
+            <p class="text-sm font-semibold">选择小组</p>
+            <div class="mt-2 grid gap-2">
+              <label class="group-option flex cursor-pointer items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-3 py-3 dark:border-brand-500/20 dark:bg-brand-500/10">
+                <span>
+                  <span class="block text-sm font-semibold">靛蓝组</span>
+                  <span class="block text-xs text-muted dark:text-slate-400">4 / 5 名学生</span>
+                </span>
+                <input type="radio" name="team" value="靛蓝组" checked />
+              </label>
+              <label class="group-option flex cursor-pointer items-center justify-between rounded-lg border border-line px-3 py-3 dark:border-slate-800">
+                <span>
+                  <span class="block text-sm font-semibold">紫藤组</span>
+                  <span class="block text-xs text-muted dark:text-slate-400">3 / 5 名学生</span>
+                </span>
+                <input type="radio" name="team" value="紫藤组" />
+              </label>
+              <label class="flex cursor-not-allowed items-center justify-between rounded-lg border border-line bg-slate-50 px-3 py-3 opacity-60 dark:border-slate-800 dark:bg-slate-950">
+                <span>
+                  <span class="block text-sm font-semibold">天蓝组</span>
+                  <span class="block text-xs text-muted dark:text-slate-400">已满</span>
+                </span>
+                <input type="radio" disabled />
+              </label>
+            </div>
+          </div>
+          <button class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-brand-600 to-violetx-600 px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:opacity-95" type="submit">
+            <i data-lucide="log-in" class="h-4 w-4"></i>
+            进入课堂
+          </button>
+        </form>
+      </section>
+
+      <section id="classroomScreen" class="hidden">
+        <section class="mb-6 grid grid-cols-[1fr_340px] gap-6">
+          <div class="rounded-lg border border-line bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-start justify-between gap-6">
+              <div>
+                <p class="text-sm font-semibold text-brand-600 dark:text-brand-100">工业设计工作室</p>
+                <h1 class="mt-2 text-3xl font-semibold tracking-normal">用户画像研究冲刺</h1>
+                <p class="mt-2 max-w-2xl text-sm leading-6 text-muted dark:text-slate-400">教师：陈老师 · 房间 FX7K91</p>
+              </div>
+              <div class="rounded-lg bg-brand-50 px-5 py-4 text-center dark:bg-brand-500/10">
+                <p class="text-xs font-bold uppercase text-brand-700 dark:text-brand-100">剩余时间</p>
+                <p id="timer" class="mt-1 font-mono text-3xl font-bold tabular-nums text-brand-700 dark:text-brand-100">42:00</p>
+              </div>
+            </div>
+          </div>
+
+          <aside class="rounded-lg border border-line bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-semibold">当前状态</h2>
+              <span id="statusBadge" class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">进行中</span>
+            </div>
+            <p id="statusCopy" class="mt-4 text-sm leading-6 text-muted dark:text-slate-400">请回答每一道题，上传支持图片，然后一次性提交。</p>
+          </aside>
+        </section>
+
+        <section id="successBanner" class="mb-6 hidden rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <i data-lucide="check-circle-2" class="h-5 w-5"></i>
+              <div>
+                <p class="font-semibold">提交成功</p>
+                <p id="successCopy" class="text-sm opacity-80">正在等待老师批阅并评分。</p>
+              </div>
+            </div>
+            <button id="teacherReviewButton" class="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800" onclick="simulateTeacherReview()">
+              <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+              查看教师反馈
+            </button>
+          </div>
+        </section>
+
+        <div class="grid grid-cols-[1fr_340px] gap-6">
+          <section class="rounded-lg border border-line bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+            <div class="border-b border-line p-5 dark:border-slate-800">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-lg font-semibold tracking-normal">作业题目</h2>
+                  <p class="mt-1 text-sm text-muted dark:text-slate-400">草稿会自动保存在此浏览器中。</p>
+                </div>
+                <div id="questionDots" class="flex items-center gap-2"></div>
+              </div>
+            </div>
+
+            <div class="p-5">
+              <div class="mb-5 rounded-lg bg-slate-50 p-4 dark:bg-slate-950">
+                <div class="mb-2 flex items-center justify-between">
+                  <span id="questionStep" class="text-xs font-bold uppercase text-brand-700 dark:text-brand-100">第 1 / 3 题</span>
+                  <span id="questionStatus" class="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">草稿</span>
+                </div>
+                <h3 id="questionTitle" class="text-xl font-semibold tracking-normal"></h3>
+                <p id="questionPrompt" class="mt-2 text-sm leading-6 text-muted dark:text-slate-400"></p>
+              </div>
+
+              <div class="flex rounded-lg border border-line bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950">
+                <button id="textTab" class="tab active rounded-md border border-transparent px-4 py-2 text-sm font-semibold" onclick="switchTab('text')">文字提交</button>
+                <button id="imageTab" class="tab rounded-md border border-transparent px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300" onclick="switchTab('image')">图片上传</button>
+              </div>
+
+              <div id="textPanel" class="mt-5">
+                <label class="block">
+                  <span class="mb-2 block text-sm font-semibold">文字回答</span>
+                  <textarea id="responseText" class="h-[300px] w-full rounded-lg border border-line bg-white p-4 text-sm leading-7 outline-none transition focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950" placeholder="在这里填写你的答案..." oninput="saveCurrentAnswer()"></textarea>
+                </label>
+              </div>
+
+              <div id="imagePanel" class="mt-5 hidden">
+                <div id="dropZone" class="drop-zone flex h-[220px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-line bg-slate-50 text-center transition dark:border-slate-800 dark:bg-slate-950" onclick="document.getElementById('imageInput').click()">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm dark:bg-slate-900 dark:text-brand-100">
+                    <i data-lucide="image-plus" class="h-6 w-6"></i>
+                  </div>
+                  <p class="mt-4 text-sm font-semibold">将图片拖到这里，或点击上传</p>
+                  <p class="mt-1 text-xs text-muted dark:text-slate-400">本题最多上传 3 张图片，支持 PNG 或 JPG</p>
+                  <input id="imageInput" class="hidden" type="file" accept="image/png,image/jpeg,image/jpg" multiple />
+                </div>
+
+                <div class="mt-5 flex items-center justify-between">
+                  <h3 class="text-sm font-semibold">图片预览</h3>
+                  <span id="imageCount" class="text-xs font-semibold text-muted dark:text-slate-400">0 / 3 张图片</span>
+                </div>
+                <div id="previewGrid" class="mt-3 grid grid-cols-3 gap-3"></div>
+              </div>
+
+              <div class="mt-5 flex items-center justify-between rounded-lg bg-slate-50 p-4 dark:bg-slate-950">
+                <button id="prevButton" class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="goQuestion(-1)">
+                  <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                  上一题
+                </button>
+                <p id="submitHint" class="text-sm text-muted dark:text-slate-400">提交前请完成所有题目。</p>
+                <div class="flex items-center gap-2">
+                  <button id="nextButton" class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="goQuestion(1)">
+                    下一题
+                    <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                  </button>
+                  <button id="submitButton" class="hidden inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-brand-600 to-violetx-600 px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:opacity-95" onclick="submitAssignment()">
+                    <i data-lucide="send" class="h-4 w-4"></i>
+                    提交作业
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="space-y-6">
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold">教师反馈</h2>
+                <span id="feedbackStatus" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">未提交</span>
+              </div>
+              <div id="feedbackCard" class="mt-4 rounded-lg border border-line bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"></div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-sm font-semibold">任务进度</h2>
+              <div id="taskList" class="mt-4 space-y-2"></div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-sm font-semibold">小组排名</h2>
+              <div id="rankingList" class="mt-4 space-y-3"></div>
+            </section>
+
+            <section class="rounded-lg border border-line bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-sm font-semibold">我的进度</h2>
+              <div class="mt-4 grid grid-cols-2 gap-3">
+                <div class="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-500/10">
+                  <p id="completedCount" class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">5</p>
+                  <p class="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">已完成</p>
+                </div>
+                <div class="rounded-lg bg-amber-50 p-4 dark:bg-amber-500/10">
+                  <p id="pendingCount" class="text-2xl font-bold text-amber-700 dark:text-amber-300">3</p>
+                  <p class="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-300">待提交</p>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="fixed bottom-6 right-6 hidden rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-soft dark:bg-white dark:text-slate-950"></div>
+
+  <script>
+    const maxImages = 3;
+    const storageKey = 'iclassroom-student-room-FX7K91';
+    const questions = [
+      {
+        title: '第 1 题：定义主要用户画像',
+        prompt: '描述一位目标学习者或用户。请包含目标、痛点、使用情境，以及研究中的一条直接观察。'
+      },
+      {
+        title: '第 2 题：绘制一条关键旅程',
+        prompt: '说明用户从首次接触到完成任务的旅程，并指出体验在哪个环节出现断点。'
+      },
+      {
+        title: '第 3 题：提出一项改进',
+        prompt: '提出一项聚焦的设计改进，说明它如何解决痛点，以及需要什么证据证明它有效。'
+      }
+    ];
+
+    const rankingsBeforeReview = [
+      ['靛蓝组', 82],
+      ['紫藤组', 78],
+      ['天蓝组', 74]
+    ];
+    const rankingsAfterReview = [
+      ['靛蓝组', 91],
+      ['紫藤组', 83],
+      ['天蓝组', 76]
+    ];
+
+    let currentQuestion = 0;
+    let activeTab = 'text';
+    let remainingSeconds = 42 * 60;
+    let submitted = false;
+    let reviewed = false;
+    let student = { name: '', team: '靛蓝组' };
+    let answers = questions.map(() => ({ text: '', images: [] }));
+
+    function refreshIcons() {
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function initials(name) {
+      return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'ST';
+    }
+
+    function toggleDark() {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      document.getElementById('darkToggle').innerHTML = isDark
+        ? '<i data-lucide="sun" class="h-4 w-4"></i>浅色'
+        : '<i data-lucide="moon" class="h-4 w-4"></i>深色';
+      refreshIcons();
+    }
+
+    function updateGroupSelection() {
+      document.querySelectorAll('.group-option').forEach(option => {
+        const checked = !!option.querySelector('input[type="radio"]:checked');
+        option.classList.toggle('border-brand-200', checked);
+        option.classList.toggle('bg-brand-50', checked);
+        option.classList.toggle('dark:border-brand-500/20', checked);
+        option.classList.toggle('dark:bg-brand-500/10', checked);
+        option.classList.toggle('border-line', !checked);
+        option.classList.toggle('dark:border-slate-800', !checked);
+      });
+    }
+
+    function lockSubmissionControls() {
+      const response = document.getElementById('responseText');
+      if (response) {
+        response.disabled = true;
+        response.classList.add('cursor-not-allowed', 'opacity-80');
+      }
+      const imageInput = document.getElementById('imageInput');
+      if (imageInput) imageInput.disabled = true;
+      const dropZone = document.getElementById('dropZone');
+      if (dropZone) {
+        dropZone.classList.add('pointer-events-none', 'opacity-60');
+        dropZone.setAttribute('aria-disabled', 'true');
+      }
+      ['prevButton', 'nextButton', 'submitButton'].forEach(id => {
+        const button = document.getElementById(id);
+        if (button) {
+          button.disabled = true;
+          button.classList.add('cursor-not-allowed', 'opacity-60');
+        }
+      });
+    }
+
+    function joinRoom() {
+      const name = document.getElementById('nicknameInput').value.trim();
+      if (!name) {
+        showToast('请输入昵称');
+        return;
+      }
+      student = {
+        name,
+        team: document.querySelector('input[name="team"]:checked')?.value || '靛蓝组'
+      };
+      localStorage.setItem(storageKey + ':identity', JSON.stringify(student));
+      document.getElementById('joinScreen').classList.add('hidden');
+      document.getElementById('classroomScreen').classList.remove('hidden');
+      document.getElementById('studentBadge').classList.remove('hidden');
+      document.getElementById('studentBadge').classList.add('flex');
+      document.getElementById('studentNameLabel').textContent = student.name;
+      document.getElementById('studentTeamLabel').textContent = student.team;
+      document.getElementById('studentAvatar').textContent = initials(student.name);
+      loadDraft();
+      renderAll();
+      showToast('已加入课堂');
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      const isText = tab === 'text';
+      document.getElementById('textPanel').classList.toggle('hidden', !isText);
+      document.getElementById('imagePanel').classList.toggle('hidden', isText);
+      document.getElementById('textTab').classList.toggle('active', isText);
+      document.getElementById('imageTab').classList.toggle('active', !isText);
+      document.getElementById('textTab').classList.toggle('text-slate-600', !isText);
+      document.getElementById('imageTab').classList.toggle('text-slate-600', isText);
+    }
+
+    function questionDone(index) {
+      return answers[index].text.trim().length > 20 || answers[index].images.length > 0;
+    }
+
+    function saveCurrentAnswer() {
+      if (submitted) return;
+      answers[currentQuestion].text = document.getElementById('responseText').value;
+      localStorage.setItem(storageKey + ':drafts', JSON.stringify(answers.map(answer => ({ text: answer.text }))));
+      renderQuestionNav();
+      renderProgress();
+    }
+
+    function loadDraft() {
+      try {
+        const identity = JSON.parse(localStorage.getItem(storageKey + ':identity') || 'null');
+        if (identity) student = identity;
+        const saved = JSON.parse(localStorage.getItem(storageKey + ':drafts') || '[]');
+        saved.forEach((draft, index) => {
+          if (answers[index]) answers[index].text = draft.text || '';
+        });
+      } catch (error) {
+        localStorage.removeItem(storageKey + ':drafts');
+      }
+    }
+
+    function renderAll() {
+      renderQuestion();
+      renderQuestionNav();
+      renderPreviews();
+      renderTaskList();
+      renderProgress();
+      renderRankings();
+      renderFeedback();
+      refreshIcons();
+    }
+
+    function renderQuestion() {
+      const question = questions[currentQuestion];
+      document.getElementById('questionStep').textContent = `第 ${currentQuestion + 1} / ${questions.length} 题`;
+      document.getElementById('questionTitle').textContent = question.title;
+      document.getElementById('questionPrompt').textContent = question.prompt;
+      document.getElementById('responseText').value = answers[currentQuestion].text;
+      document.getElementById('questionStatus').textContent = questionDone(currentQuestion) ? '草稿已保存' : '草稿';
+      document.getElementById('prevButton').disabled = submitted || currentQuestion === 0;
+      document.getElementById('nextButton').disabled = submitted;
+      document.getElementById('nextButton').classList.toggle('hidden', currentQuestion === questions.length - 1);
+      document.getElementById('submitButton').classList.toggle('hidden', currentQuestion !== questions.length - 1 || submitted);
+      renderPreviews();
+      switchTab(activeTab);
+      if (submitted) lockSubmissionControls();
+    }
+
+    function renderQuestionNav() {
+      document.getElementById('questionDots').innerHTML = questions.map((question, index) => `
+        <button class="question-dot ${index === currentQuestion ? 'active' : ''} flex h-9 w-9 items-center justify-center rounded-lg border border-line text-sm font-bold dark:border-slate-800" onclick="setQuestion(${index})" title="${question.title}">
+          ${questionDone(index) ? '<i data-lucide="check" class="h-4 w-4"></i>' : index + 1}
+        </button>
+      `).join('');
+      refreshIcons();
+    }
+
+    function setQuestion(index) {
+      if (submitted) {
+        showToast('作业已提交，答案不能再修改');
+        return;
+      }
+      saveCurrentAnswer();
+      currentQuestion = index;
+      renderQuestion();
+      renderQuestionNav();
+      renderTaskList();
+    }
+
+    function goQuestion(direction) {
+      if (submitted) {
+        showToast('作业已提交，答案不能再修改');
+        return;
+      }
+      saveCurrentAnswer();
+      currentQuestion = Math.max(0, Math.min(questions.length - 1, currentQuestion + direction));
+      renderQuestion();
+      renderQuestionNav();
+      renderTaskList();
+    }
+
+    function handleFiles(files) {
+      if (submitted) return;
+      const imageFiles = [...files].filter(file => file.type.startsWith('image/'));
+      const availableSlots = maxImages - answers[currentQuestion].images.length;
+      imageFiles.slice(0, availableSlots).forEach(file => {
+        answers[currentQuestion].images.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+          name: file.name,
+          url: URL.createObjectURL(file)
+        });
+      });
+      if (imageFiles.length > availableSlots) showToast('每题最多只能上传 3 张图片');
+      renderPreviews();
+      renderQuestionNav();
+      renderTaskList();
+      renderProgress();
+    }
+
+    function renderPreviews() {
+      const images = answers[currentQuestion].images;
+      const grid = document.getElementById('previewGrid');
+      document.getElementById('imageCount').textContent = `${images.length} / 3 张图片`;
+      grid.innerHTML = images.map(image => `
+        <div class="overflow-hidden rounded-lg border border-line bg-white dark:border-slate-800 dark:bg-slate-950">
+          <img class="h-36 w-full object-cover" src="${image.url}" alt="${image.name}" />
+          <div class="flex items-center justify-between gap-2 p-3">
+            <span class="truncate text-xs font-semibold">${image.name}</span>
+            <button class="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800" onclick="removeImage('${image.id}')" aria-label="移除图片">
+              <i data-lucide="x" class="h-4 w-4"></i>
+            </button>
+          </div>
+        </div>
+      `).join('') || '<div class="col-span-3 rounded-lg border border-dashed border-line p-6 text-center text-sm text-muted dark:border-slate-800 dark:text-slate-400">本题尚未上传图片。</div>';
+      refreshIcons();
+    }
+
+    function removeImage(id) {
+      if (submitted) return;
+      const image = answers[currentQuestion].images.find(item => item.id === id);
+      if (image) URL.revokeObjectURL(image.url);
+      answers[currentQuestion].images = answers[currentQuestion].images.filter(item => item.id !== id);
+      renderPreviews();
+      renderQuestionNav();
+      renderTaskList();
+      renderProgress();
+    }
+
+    function renderTaskList() {
+      document.getElementById('taskList').innerHTML = questions.map((question, index) => {
+        const done = questionDone(index);
+        const active = index === currentQuestion;
+        const state = reviewed ? '已评分' : submitted ? '已提交' : done ? '草稿已保存' : '待提交';
+        const color = reviewed ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-300' : submitted ? 'text-brand-700 bg-brand-50 dark:bg-brand-500/10 dark:text-brand-100' : done ? 'text-violetx-600 bg-violetx-50 dark:bg-violet-500/10 dark:text-violet-300' : 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300';
+        return `
+          <button class="w-full rounded-lg border ${active ? 'border-brand-300' : 'border-line dark:border-slate-800'} p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800" onclick="setQuestion(${index})">
+            <div class="flex items-center justify-between gap-3">
+              <span class="truncate text-sm font-semibold">${question.title.replace(/^Q\d+\.\s*/, '')}</span>
+              <span class="shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${color}">${state}</span>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderProgress() {
+      const doneCount = questions.filter((question, index) => questionDone(index)).length;
+      document.getElementById('completedCount').textContent = reviewed ? 8 : 5 + (submitted ? 3 : doneCount);
+      document.getElementById('pendingCount').textContent = submitted ? 0 : questions.length - doneCount;
+      document.getElementById('submitHint').textContent = submitted
+        ? reviewed ? '教师反馈已准备好。' : '已提交，正在等待教师批阅。'
+        : `${doneCount} of ${questions.length} 道题已有草稿内容。`;
+    }
+
+    function renderRankings() {
+      const rankings = reviewed ? rankingsAfterReview : rankingsBeforeReview;
+      document.getElementById('rankingList').innerHTML = rankings.map(([team, score], index) => {
+        const mine = team === student.team;
+        const bg = mine ? 'bg-brand-50 dark:bg-brand-500/10' : 'bg-slate-50 dark:bg-slate-950';
+        const text = mine ? 'text-brand-700 dark:text-brand-100' : '';
+        return `
+          <div class="flex items-center justify-between rounded-lg ${bg} px-3 py-3">
+            <span class="text-sm font-semibold ${text}">${index + 1}. ${team}${mine ? ' · 我的小组' : ''}</span>
+            <span class="text-sm font-bold ${text}">${score}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderFeedback() {
+      const status = document.getElementById('feedbackStatus');
+      const card = document.getElementById('feedbackCard');
+      if (!submitted) {
+        status.textContent = '未提交';
+        status.className = 'rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+        card.innerHTML = '<p class="text-sm leading-6 text-muted dark:text-slate-400">请先提交答案。教师手动批阅后，反馈会显示在这里。</p>';
+        return;
+      }
+      if (!reviewed) {
+        status.textContent = '等待中';
+        status.className = 'rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+        card.innerHTML = `
+          <div class="flex items-start gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i data-lucide="clock" class="h-5 w-5"></i></div>
+            <div>
+              <p class="text-sm font-semibold">等待教师批阅</p>
+              <p class="mt-1 text-sm leading-6 text-muted dark:text-slate-400">你的提交已发送。老师评分后，可刷新此卡片查看结果。</p>
+            </div>
+          </div>
+        `;
+        refreshIcons();
+        return;
+      }
+      status.textContent = '已评分';
+      status.className = 'rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold">评分</span>
+          <span class="rounded-full bg-brand-50 px-3 py-1 text-sm font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-100">9 / 10</span>
+        </div>
+        <p class="mt-4 text-sm leading-6 text-slate-700 dark:text-slate-300">三道题的结构都很清楚。你的用户画像目标与痛点明确，旅程地图最有说服力；下次可以加入一句直接访谈引语来支撑改进方案。</p>
+        <button class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onclick="showToast('PDF 反馈开始下载')">
+          <i data-lucide="download" class="h-4 w-4"></i>
+          下载 PDF 反馈
+        </button>
+      `;
+      refreshIcons();
+    }
+
+    function submitAssignment() {
+      saveCurrentAnswer();
+      submitted = true;
+      document.getElementById('successBanner').classList.remove('hidden');
+      document.getElementById('statusBadge').textContent = '已提交';
+      document.getElementById('statusBadge').className = 'rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-100';
+      document.getElementById('statusCopy').textContent = '你的答案已锁定，正在等待老师评分和评语。';
+      document.getElementById('submitButton').disabled = true;
+      document.getElementById('submitButton').classList.add('opacity-70', 'cursor-not-allowed');
+      lockSubmissionControls();
+      renderAll();
+      lockSubmissionControls();
+      showToast('作业已提交');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function simulateTeacherReview() {
+      if (!submitted) {
+        showToast('请先提交，再查看反馈');
+        return;
+      }
+      reviewed = true;
+      document.getElementById('statusBadge').textContent = '已评分';
+      document.getElementById('statusBadge').className = 'rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
+      document.getElementById('statusCopy').textContent = '教师反馈已准备好，你可以下载 PDF 批阅文件。';
+      document.getElementById('successCopy').textContent = '教师反馈已准备好，评分、评语和 PDF 批阅文件均可查看。';
+      document.getElementById('teacherReviewButton').innerHTML = '<i data-lucide="eye" class="h-4 w-4"></i>反馈已就绪';
+      renderAll();
+      lockSubmissionControls();
+      showToast('教师反馈已准备好');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
+    }
+
+    function updateTimer() {
+      const minutes = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
+      const seconds = String(remainingSeconds % 60).padStart(2, '0');
+      const timer = document.getElementById('timer');
+      if (timer) timer.textContent = `${minutes}:${seconds}`;
+      if (remainingSeconds > 0) remainingSeconds -= 1;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('imageInput');
+      const dropZone = document.getElementById('dropZone');
+      const savedIdentity = JSON.parse(localStorage.getItem(storageKey + ':identity') || 'null');
+      if (savedIdentity?.name) {
+        document.getElementById('nicknameInput').value = savedIdentity.name;
+      }
+
+      input.addEventListener('change', event => handleFiles(event.target.files));
+      updateGroupSelection();
+      document.querySelectorAll('input[name="team"]').forEach(input => {
+        input.addEventListener('change', updateGroupSelection);
+      });
+      dropZone.addEventListener('dragover', event => {
+        event.preventDefault();
+        dropZone.classList.add('dragging');
+      });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
+      dropZone.addEventListener('drop', event => {
+        event.preventDefault();
+        dropZone.classList.remove('dragging');
+        handleFiles(event.dataTransfer.files);
+      });
+
+      renderFeedback();
+      updateTimer();
+      setInterval(updateTimer, 1000);
+      refreshIcons();
+    });
+  </script>
+</body>
+</html>
