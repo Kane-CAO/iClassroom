@@ -17,6 +17,7 @@ Thumbs.db
 !.env.example
 *.pem
 *.key
+backend/.env
 
 # ===== 后端 Go =====
 # 编译产物 / 二进制

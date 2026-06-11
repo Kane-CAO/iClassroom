@@ -14,8 +14,11 @@ import (
 
 	"iclassroom/backend/internal/config"
 	"iclassroom/backend/internal/database"
+	"iclassroom/backend/internal/handler"
 	"iclassroom/backend/internal/middleware"
+	"iclassroom/backend/internal/repository"
 	"iclassroom/backend/internal/response"
+	"iclassroom/backend/internal/service"
 )
 
 func main() {
@@ -61,7 +64,29 @@ func newRouter(cfg *config.Config, db *sql.DB) *gin.Engine {
 
 	router.GET("/health", healthHandler(cfg, db))
 
+	// Business endpoints require a database. In development the server still
+	// boots without one (so /health stays reachable); the /api routes are
+	// simply not mounted until a DB is available.
+	if db != nil {
+		registerAPIRoutes(router, cfg, db)
+	}
+
 	return router
+}
+
+// registerAPIRoutes wires the repository → service → handler layers and mounts
+// the /api routes.
+func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
+	roomRepo := repository.NewRoomRepository(db)
+	groupRepo := repository.NewGroupRepository(db)
+	studentRepo := repository.NewStudentRepository(db)
+
+	roomSvc := service.NewRoomService(roomRepo, groupRepo, cfg.FrontendBaseURL)
+	studentSvc := service.NewStudentService(roomRepo, groupRepo, studentRepo)
+
+	api := router.Group("/api")
+	handler.NewRoomHandler(roomSvc).Register(api)
+	handler.NewStudentHandler(studentSvc).Register(api)
 }
 
 // healthHandler reports service liveness and live database connectivity.

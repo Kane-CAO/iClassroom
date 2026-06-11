@@ -35,6 +35,11 @@ type Config struct {
 	// CORSAllowedOrigins is the list of origins allowed by the CORS
 	// middleware. In development this is the frontend dev server.
 	CORSAllowedOrigins []string
+
+	// FrontendBaseURL is the public base URL of the frontend app. It is used to
+	// build the student joinUrl and the teacher dashboard URL returned on room
+	// creation (see docs/api.md). No trailing slash.
+	FrontendBaseURL string
 }
 
 // IsProduction reports whether the service runs in production mode.
@@ -74,6 +79,8 @@ func Load() (*Config, error) {
 		DBConnMaxLifetime: time.Duration(getEnvInt("DB_CONN_MAX_LIFETIME_MINUTES", 5)) * time.Minute,
 
 		CORSAllowedOrigins: getEnvList("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),
+
+		FrontendBaseURL: strings.TrimRight(getEnv("FRONTEND_BASE_URL", "http://localhost:5173"), "/"),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -101,6 +108,9 @@ func (c *Config) validate() error {
 	}
 	if len(c.CORSAllowedOrigins) == 0 {
 		return fmt.Errorf("config: CORS_ALLOWED_ORIGINS must list at least one origin")
+	}
+	if c.FrontendBaseURL == "" {
+		return fmt.Errorf("config: FRONTEND_BASE_URL must not be empty")
 	}
 	return nil
 }
