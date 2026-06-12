@@ -82,6 +82,26 @@ func GroupFull() *Error {
 	return New(http.StatusConflict, "GROUP_FULL", "group is full")
 }
 
+func TaskNotFound() *Error {
+	return New(http.StatusNotFound, "TASK_NOT_FOUND", "task not found")
+}
+
+func InvalidTaskTitle() *Error {
+	return New(http.StatusBadRequest, "INVALID_TASK_TITLE", "task title is required and must be at most 255 characters")
+}
+
+func InvalidDeadline() *Error {
+	return New(http.StatusBadRequest, "INVALID_DEADLINE", "deadlineAt must be later than current time")
+}
+
+func InvalidTargetType() *Error {
+	return New(http.StatusBadRequest, "INVALID_TARGET_TYPE", "targetType must be all or groups")
+}
+
+func InvalidTargetGroup() *Error {
+	return New(http.StatusBadRequest, "INVALID_TARGET_GROUP", "targetGroupIds must belong to this room")
+}
+
 // InvalidRequest is used for malformed request bodies / unbindable input.
 func InvalidRequest(message string) *Error {
 	if message == "" {
