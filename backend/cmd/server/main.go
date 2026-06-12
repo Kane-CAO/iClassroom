@@ -1,7 +1,3 @@
-// Command server is the HTTP entrypoint for the iClassroom backend.
-//
-// Backend Step 0 scope: boot the service, load config, connect to MySQL, and
-// expose a health check. No business endpoints are implemented here.
 package main
 
 import (
@@ -31,9 +27,6 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Connect to MySQL. In development a missing DB should not stop the server
-	// from booting, so /health stays reachable and reports DB status truthfully.
-	// In production we fail fast, because the service is useless without a DB.
 	db, err := database.New(cfg)
 	if err != nil {
 		if cfg.IsProduction() {
@@ -54,9 +47,6 @@ func main() {
 	}
 }
 
-// newRouter builds the Gin engine with shared middleware and the health check.
-// It is separated from main so it can be exercised by tests. db may be nil when
-// the database is unavailable in development.
 func newRouter(cfg *config.Config, db *sql.DB) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
@@ -64,9 +54,6 @@ func newRouter(cfg *config.Config, db *sql.DB) *gin.Engine {
 
 	router.GET("/health", healthHandler(cfg, db))
 
-	// Business endpoints require a database. In development the server still
-	// boots without one (so /health stays reachable); the /api routes are
-	// simply not mounted until a DB is available.
 	if db != nil {
 		registerAPIRoutes(router, cfg, db)
 	}
@@ -74,22 +61,22 @@ func newRouter(cfg *config.Config, db *sql.DB) *gin.Engine {
 	return router
 }
 
-// registerAPIRoutes wires the repository → service → handler layers and mounts
-// the /api routes.
 func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	roomRepo := repository.NewRoomRepository(db)
 	groupRepo := repository.NewGroupRepository(db)
 	studentRepo := repository.NewStudentRepository(db)
+	taskRepo := repository.NewTaskRepository(db)
 
 	roomSvc := service.NewRoomService(roomRepo, groupRepo, cfg.FrontendBaseURL)
 	studentSvc := service.NewStudentService(roomRepo, groupRepo, studentRepo)
+	taskSvc := service.NewTaskService(roomRepo, groupRepo, taskRepo)
 
 	api := router.Group("/api")
 	handler.NewRoomHandler(roomSvc).Register(api)
 	handler.NewStudentHandler(studentSvc).Register(api)
+	handler.NewTaskHandler(taskSvc).Register(api)
 }
 
-// healthHandler reports service liveness and live database connectivity.
 func healthHandler(cfg *config.Config, db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		dbStatus := "down"
