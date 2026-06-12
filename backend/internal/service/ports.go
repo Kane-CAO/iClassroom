@@ -30,3 +30,12 @@ type StudentRepository interface {
 	Join(ctx context.Context, roomID, groupID int64, nickname, clientToken string) (*domain.Student, error)
 	GetByClientToken(ctx context.Context, token string) (*domain.Student, error)
 }
+
+// TaskRepository is the persistence surface the services need for tasks.
+type TaskRepository interface {
+	Create(ctx context.Context, task *domain.Task, targetGroupIDs []int64) error
+	ListByRoomID(ctx context.Context, roomID int64) ([]repository.TaskWithStats, error)
+	ListTargetGroupIDs(ctx context.Context, taskID int64) ([]int64, error)
+	GetRoomByTaskID(ctx context.Context, taskID int64) (*domain.Room, error)
+	UpdateStatus(ctx context.Context, taskID int64, status domain.TaskStatus) error
+}
