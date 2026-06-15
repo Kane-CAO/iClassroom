@@ -69,6 +69,26 @@ type SubmissionView struct {
 	Group      domain.Group
 }
 
+type GradeSubmissionResult struct {
+	Submission      domain.Submission
+	GroupScoreTotal int
+}
+
+type StudentResultItem struct {
+	Task             domain.Task
+	SubmissionStatus string
+	Score            *int
+	Comment          string
+	SubmittedAt      *time.Time
+	GradedAt         *time.Time
+}
+
+type StudentResultsView struct {
+	Student domain.Student
+	Group   domain.Group
+	Results []StudentResultItem
+}
+
 func (s *TaskService) Create(ctx context.Context, in CreateTaskInput) (*TaskView, error) {
 	room, err := s.verifyTeacherByRoomCode(ctx, in.RoomCode, in.TeacherToken)
 	if err != nil {
@@ -394,7 +414,7 @@ type LeaderboardView struct {
 	Entries  []LeaderboardEntry
 }
 
-func (s *TaskService) GradeSubmission(ctx context.Context, submissionID int64, teacherToken string, score int, comment string) (*domain.Submission, error) {
+func (s *TaskService) GradeSubmission(ctx context.Context, submissionID int64, teacherToken string, score int, comment string) (*GradeSubmissionResult, error) {
 	if submissionID <= 0 {
 		return nil, apperr.SubmissionNotFound()
 	}
@@ -423,7 +443,63 @@ func (s *TaskService) GradeSubmission(ctx context.Context, submissionID int64, t
 		return nil, err
 	}
 
-	return submission, nil
+	group, err := s.groups.GetByID(ctx, submission.GroupID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, apperr.SubmissionNotFound()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &GradeSubmissionResult{
+		Submission:      *submission,
+		GroupScoreTotal: group.ScoreTotal,
+	}, nil
+}
+
+func (s *TaskService) GetStudentResults(ctx context.Context, studentToken string) (*StudentResultsView, error) {
+	student, err := s.verifyStudent(ctx, studentToken)
+	if err != nil {
+		return nil, err
+	}
+
+	group, err := s.groups.GetByID(ctx, student.GroupID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, apperr.InvalidStudentToken()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := s.submissions.ListTasksForStudent(ctx, student.ID, student.RoomID, student.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]StudentResultItem, 0, len(items))
+	for _, item := range items {
+		result := StudentResultItem{
+			Task:             item.Task,
+			SubmissionStatus: "notSubmitted",
+		}
+
+		if item.Submission != nil {
+			result.SubmissionStatus = string(item.Submission.Status)
+			result.Score = item.Submission.Score
+			result.Comment = item.Submission.Comment
+			submittedAt := item.Submission.SubmittedAt
+			result.SubmittedAt = &submittedAt
+			result.GradedAt = item.Submission.GradedAt
+		}
+
+		results = append(results, result)
+	}
+
+	return &StudentResultsView{
+		Student: *student,
+		Group:   *group,
+		Results: results,
+	}, nil
 }
 
 func (s *TaskService) GetLeaderboardForTeacher(ctx context.Context, roomCode, teacherToken string) (*LeaderboardView, error) {
@@ -452,6 +528,32 @@ func (s *TaskService) GetLeaderboardForStudent(ctx context.Context, studentToken
 	}
 
 	return buildLeaderboard("", items, student.GroupID), nil
+}
+
+func (s *TaskService) GetRankingForStudent(ctx context.Context, roomCode, studentToken string) (*LeaderboardView, error) {
+	student, err := s.verifyStudent(ctx, studentToken)
+	if err != nil {
+		return nil, err
+	}
+
+	room, err := s.rooms.GetByRoomCode(ctx, roomCode)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, apperr.RoomNotFound()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if room.ID != student.RoomID {
+		return nil, apperr.RoomAccessDenied()
+	}
+
+	items, err := s.submissions.ListLeaderboardByRoomID(ctx, room.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildLeaderboard(room.RoomCode, items, student.GroupID), nil
 }
 
 func buildLeaderboard(roomCode string, items []repository.LeaderboardItem, myGroupID int64) *LeaderboardView {

@@ -1337,3 +1337,21 @@ IMAGE_FILE_MISSING
    本文档约定为 `{ success, message, data, errorCode }`。
    但当前前端 `frontend/src/api/client.ts` 中的 `ApiResponse<T>` 定义为 `{ code, message, data }`（使用 `code` 而非 `success`）。
    联调前需统一二者：建议以本文档为准，后续调整前端 client 的类型定义（本阶段不修改代码）。
+
+---
+
+## Backend compatibility note for Prompt 9-11 contract fix
+
+The standard contract routes are:
+
+- `POST /api/teacher/submissions/:submissionId/grade`
+- `GET /api/student/me/results`
+- `GET /api/student/rooms/:roomCode/ranking`
+
+Temporary compatibility routes are still supported for existing callers:
+
+- `PATCH /api/teacher/submissions/:submissionId/grade`
+- `GET /api/teacher/rooms/:roomCode/leaderboard`
+- `GET /api/student/me/leaderboard`
+
+These compatibility routes can be removed after all frontend and teammate branches migrate to the standard contract paths.
