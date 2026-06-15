@@ -381,3 +381,93 @@ func (s *TaskService) verifyTeacherAgainstRoom(ctx context.Context, room *domain
 
 	return apperr.InvalidTeacherToken()
 }
+
+type LeaderboardEntry struct {
+	Rank         int
+	Group        domain.Group
+	CurrentCount int
+	IsMyGroup    bool
+}
+
+type LeaderboardView struct {
+	RoomCode string
+	Entries  []LeaderboardEntry
+}
+
+func (s *TaskService) GradeSubmission(ctx context.Context, submissionID int64, teacherToken string, score int, comment string) (*domain.Submission, error) {
+	if submissionID <= 0 {
+		return nil, apperr.SubmissionNotFound()
+	}
+
+	if !domain.IsValidScore(score) {
+		return nil, apperr.InvalidScore()
+	}
+
+	room, err := s.submissions.GetRoomBySubmissionID(ctx, submissionID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, apperr.SubmissionNotFound()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.verifyTeacherAgainstRoom(ctx, room, teacherToken); err != nil {
+		return nil, err
+	}
+
+	submission, err := s.submissions.GradeSubmission(ctx, submissionID, score, strings.TrimSpace(comment))
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, apperr.SubmissionNotFound()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return submission, nil
+}
+
+func (s *TaskService) GetLeaderboardForTeacher(ctx context.Context, roomCode, teacherToken string) (*LeaderboardView, error) {
+	room, err := s.verifyTeacherByRoomCode(ctx, roomCode, teacherToken)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := s.submissions.ListLeaderboardByRoomID(ctx, room.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildLeaderboard(room.RoomCode, items, 0), nil
+}
+
+func (s *TaskService) GetLeaderboardForStudent(ctx context.Context, studentToken string) (*LeaderboardView, error) {
+	student, err := s.verifyStudent(ctx, studentToken)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := s.submissions.ListLeaderboardByRoomID(ctx, student.RoomID)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildLeaderboard("", items, student.GroupID), nil
+}
+
+func buildLeaderboard(roomCode string, items []repository.LeaderboardItem, myGroupID int64) *LeaderboardView {
+	entries := make([]LeaderboardEntry, 0, len(items))
+
+	for i, item := range items {
+		entries = append(entries, LeaderboardEntry{
+			Rank:         i + 1,
+			Group:        item.Group,
+			CurrentCount: item.CurrentCount,
+			IsMyGroup:    myGroupID > 0 && item.Group.ID == myGroupID,
+		})
+	}
+
+	return &LeaderboardView{
+		RoomCode: roomCode,
+		Entries:  entries,
+	}
+}
