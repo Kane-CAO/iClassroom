@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"iclassroom/backend/internal/domain"
 )
@@ -440,4 +441,217 @@ func (r *SubmissionRepository) listTargetGroupIDs(ctx context.Context, taskID in
 	}
 
 	return groupIDs, nil
+}
+
+// LeaderboardItem is one group row in the room leaderboard.
+type LeaderboardItem struct {
+	Group        domain.Group
+	CurrentCount int
+}
+
+// GetRoomBySubmissionID loads the room that owns a submission. It is used for
+// teacher-token authorization on submission-id based routes.
+func (r *SubmissionRepository) GetRoomBySubmissionID(ctx context.Context, submissionID int64) (*domain.Room, error) {
+	const q = `SELECT rm.id, rm.room_code, rm.title, rm.status, rm.group_count, rm.group_capacity,
+rm.allow_choose_group, rm.teacher_token, rm.created_at, rm.updated_at, rm.ended_at
+FROM rooms rm
+INNER JOIN submissions s ON s.room_id = rm.id
+WHERE s.id = ?`
+
+	room, err := scanRoom(r.db.QueryRowContext(ctx, q, submissionID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("repository: get room by submission id: %w", err)
+	}
+
+	return room, nil
+}
+
+// GradeSubmission updates one submission score and keeps groups.score_total in sync.
+// If the submission is regraded, only the score delta is applied to the group total.
+func (r *SubmissionRepository) GradeSubmission(ctx context.Context, submissionID int64, score int, comment string) (*domain.Submission, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("repository: begin grade tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	const lockQ = `SELECT id, task_id, student_id, room_id, group_id, content_text, status,
+score, comment, submitted_at, graded_at, created_at, updated_at
+FROM submissions
+WHERE id = ?
+FOR UPDATE`
+
+	var (
+		sub         domain.Submission
+		contentText sql.NullString
+		oldScore    sql.NullInt64
+		oldComment  sql.NullString
+		oldGradedAt sql.NullTime
+	)
+
+	err = tx.QueryRowContext(ctx, lockQ, submissionID).Scan(
+		&sub.ID,
+		&sub.TaskID,
+		&sub.StudentID,
+		&sub.RoomID,
+		&sub.GroupID,
+		&contentText,
+		&sub.Status,
+		&oldScore,
+		&oldComment,
+		&sub.SubmittedAt,
+		&oldGradedAt,
+		&sub.CreatedAt,
+		&sub.UpdatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("repository: lock submission for grading: %w", err)
+	}
+
+	previousScore := 0
+	if oldScore.Valid {
+		previousScore = int(oldScore.Int64)
+	}
+
+	scoreDelta := score - previousScore
+	gradedAt := time.Now().UTC()
+
+	const updateSubmission = `UPDATE submissions
+SET status = ?, score = ?, comment = ?, graded_at = ?, updated_at = ?
+WHERE id = ?`
+
+	if _, err := tx.ExecContext(
+		ctx,
+		updateSubmission,
+		domain.SubmissionStatusGraded,
+		score,
+		nullableString(comment),
+		gradedAt,
+		gradedAt,
+		submissionID,
+	); err != nil {
+		return nil, fmt.Errorf("repository: update graded submission: %w", err)
+	}
+
+	const updateGroup = "UPDATE `groups` SET score_total = score_total + ?, updated_at = ? WHERE id = ? AND room_id = ?"
+
+	res, err := tx.ExecContext(ctx, updateGroup, scoreDelta, gradedAt, sub.GroupID, sub.RoomID)
+	if err != nil {
+		return nil, fmt.Errorf("repository: update group score total: %w", err)
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("repository: group score rows affected: %w", err)
+	}
+	if affected == 0 {
+		return nil, ErrNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("repository: commit grade tx: %w", err)
+	}
+
+	return r.getSubmissionByID(ctx, submissionID)
+}
+
+// ListLeaderboardByRoomID returns all groups in a room ordered by score.
+func (r *SubmissionRepository) ListLeaderboardByRoomID(ctx context.Context, roomID int64) ([]LeaderboardItem, error) {
+	const q = "SELECT g.id, g.room_id, g.group_name, g.capacity, g.score_total, " +
+		"COUNT(s.id) AS current_count, g.created_at, g.updated_at " +
+		"FROM `groups` g " +
+		"LEFT JOIN students s ON s.group_id = g.id " +
+		"WHERE g.room_id = ? " +
+		"GROUP BY g.id, g.room_id, g.group_name, g.capacity, g.score_total, g.created_at, g.updated_at " +
+		"ORDER BY g.score_total DESC, g.id ASC"
+
+	rows, err := r.db.QueryContext(ctx, q, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("repository: list leaderboard: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make([]LeaderboardItem, 0)
+	for rows.Next() {
+		var item LeaderboardItem
+		if err := rows.Scan(
+			&item.Group.ID,
+			&item.Group.RoomID,
+			&item.Group.GroupName,
+			&item.Group.Capacity,
+			&item.Group.ScoreTotal,
+			&item.CurrentCount,
+			&item.Group.CreatedAt,
+			&item.Group.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("repository: scan leaderboard row: %w", err)
+		}
+		out = append(out, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("repository: iterate leaderboard rows: %w", err)
+	}
+
+	return out, nil
+}
+
+func (r *SubmissionRepository) getSubmissionByID(ctx context.Context, submissionID int64) (*domain.Submission, error) {
+	const q = `SELECT id, task_id, student_id, room_id, group_id, content_text, status,
+score, comment, submitted_at, graded_at, created_at, updated_at
+FROM submissions
+WHERE id = ?`
+
+	var (
+		sub         domain.Submission
+		contentText sql.NullString
+		score       sql.NullInt64
+		comment     sql.NullString
+		gradedAt    sql.NullTime
+	)
+
+	err := r.db.QueryRowContext(ctx, q, submissionID).Scan(
+		&sub.ID,
+		&sub.TaskID,
+		&sub.StudentID,
+		&sub.RoomID,
+		&sub.GroupID,
+		&contentText,
+		&sub.Status,
+		&score,
+		&comment,
+		&sub.SubmittedAt,
+		&gradedAt,
+		&sub.CreatedAt,
+		&sub.UpdatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("repository: get submission by id: %w", err)
+	}
+
+	if contentText.Valid {
+		sub.ContentText = contentText.String
+	}
+	if score.Valid {
+		scoreValue := int(score.Int64)
+		sub.Score = &scoreValue
+	}
+	if comment.Valid {
+		sub.Comment = comment.String
+	}
+	if gradedAt.Valid {
+		t := gradedAt.Time
+		sub.GradedAt = &t
+	}
+
+	return &sub, nil
 }

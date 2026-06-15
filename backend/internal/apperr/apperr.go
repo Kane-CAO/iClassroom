@@ -114,6 +114,14 @@ func TaskNotAcceptingSubmissions() *Error {
 	return New(http.StatusConflict, "TASK_NOT_ACCEPTING_SUBMISSIONS", "task is not accepting submissions")
 }
 
+func SubmissionNotFound() *Error {
+	return New(http.StatusNotFound, "SUBMISSION_NOT_FOUND", "submission not found")
+}
+
+func InvalidScore() *Error {
+	return New(http.StatusBadRequest, "INVALID_SCORE", "score must be an integer between 1 and 10")
+}
+
 // InvalidRequest is used for malformed request bodies / unbindable input.
 func InvalidRequest(message string) *Error {
 	if message == "" {

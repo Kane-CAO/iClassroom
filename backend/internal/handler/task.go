@@ -30,6 +30,10 @@ func (h *TaskHandler) Register(rg *gin.RouterGroup) {
 	rg.GET("/student/me/tasks", h.ListForStudent)
 	rg.POST("/student/tasks/:taskId/submit", h.Submit)
 	rg.GET("/teacher/tasks/:taskId/submissions", h.ListSubmissions)
+
+	rg.PATCH("/teacher/submissions/:submissionId/grade", h.GradeSubmission)
+	rg.GET("/teacher/rooms/:roomCode/leaderboard", h.TeacherLeaderboard)
+	rg.GET("/student/me/leaderboard", h.StudentLeaderboard)
 }
 
 type createTaskRequest struct {
@@ -43,6 +47,11 @@ type createTaskRequest struct {
 
 type submitTaskRequest struct {
 	ContentText string `json:"contentText"`
+}
+
+type gradeSubmissionRequest struct {
+	Score   int    `json:"score"`
+	Comment string `json:"comment"`
 }
 
 func (h *TaskHandler) Create(c *gin.Context) {
@@ -130,6 +139,34 @@ func (h *TaskHandler) Submit(c *gin.Context) {
 	response.Success(c, submissionJSON(submission))
 }
 
+func (h *TaskHandler) GradeSubmission(c *gin.Context) {
+	submissionID, err := strconv.ParseInt(c.Param("submissionId"), 10, 64)
+	if err != nil || submissionID <= 0 {
+		respondError(c, apperr.SubmissionNotFound())
+		return
+	}
+
+	var req gradeSubmissionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, apperr.InvalidRequest("malformed request body"))
+		return
+	}
+
+	submission, err := h.tasks.GradeSubmission(
+		c.Request.Context(),
+		submissionID,
+		c.GetHeader(headerTeacherToken),
+		req.Score,
+		req.Comment,
+	)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	response.Success(c, submissionJSON(submission))
+}
+
 func (h *TaskHandler) ListSubmissions(c *gin.Context) {
 	taskID, err := strconv.ParseInt(c.Param("taskId"), 10, 64)
 	if err != nil || taskID <= 0 {
@@ -152,6 +189,31 @@ func (h *TaskHandler) ListSubmissions(c *gin.Context) {
 		"taskId":      taskID,
 		"submissions": out,
 	})
+}
+
+func (h *TaskHandler) TeacherLeaderboard(c *gin.Context) {
+	roomCode := c.Param("roomCode")
+	token := c.GetHeader(headerTeacherToken)
+
+	view, err := h.tasks.GetLeaderboardForTeacher(c.Request.Context(), roomCode, token)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	response.Success(c, leaderboardJSON(view))
+}
+
+func (h *TaskHandler) StudentLeaderboard(c *gin.Context) {
+	token := c.GetHeader(headerStudentToken)
+
+	view, err := h.tasks.GetLeaderboardForStudent(c.Request.Context(), token)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	response.Success(c, leaderboardJSON(view))
 }
 
 func (h *TaskHandler) Pause(c *gin.Context) {
@@ -247,5 +309,25 @@ func submissionWithStudentJSON(item *service.SubmissionView) gin.H {
 		"comment":      item.Submission.Comment,
 		"submittedAt":  item.Submission.SubmittedAt,
 		"gradedAt":     item.Submission.GradedAt,
+	}
+}
+
+func leaderboardJSON(view *service.LeaderboardView) gin.H {
+	entries := make([]gin.H, 0, len(view.Entries))
+
+	for _, entry := range view.Entries {
+		entries = append(entries, gin.H{
+			"rank":         entry.Rank,
+			"groupId":      entry.Group.ID,
+			"groupName":    entry.Group.GroupName,
+			"scoreTotal":   entry.Group.ScoreTotal,
+			"currentCount": entry.CurrentCount,
+			"isMyGroup":    entry.IsMyGroup,
+		})
+	}
+
+	return gin.H{
+		"roomCode":    view.RoomCode,
+		"leaderboard": entries,
 	}
 }
