@@ -12,15 +12,30 @@ import (
 )
 
 const maxTaskTitleLen = 255
+const maxSubmissionTextLen = 5000
 
 type TaskService struct {
-	rooms  RoomRepository
-	groups GroupRepository
-	tasks  TaskRepository
+	rooms       RoomRepository
+	groups      GroupRepository
+	students    StudentRepository
+	tasks       TaskRepository
+	submissions SubmissionRepository
 }
 
-func NewTaskService(rooms RoomRepository, groups GroupRepository, tasks TaskRepository) *TaskService {
-	return &TaskService{rooms: rooms, groups: groups, tasks: tasks}
+func NewTaskService(
+	rooms RoomRepository,
+	groups GroupRepository,
+	students StudentRepository,
+	tasks TaskRepository,
+	submissions SubmissionRepository,
+) *TaskService {
+	return &TaskService{
+		rooms:       rooms,
+		groups:      groups,
+		students:    students,
+		tasks:       tasks,
+		submissions: submissions,
+	}
 }
 
 type CreateTaskInput struct {
@@ -40,6 +55,18 @@ type TaskView struct {
 	TargetGroupIDs     []int64
 	SubmittedCount     int
 	TargetStudentCount int
+}
+
+type StudentTaskView struct {
+	Task           domain.Task
+	TargetGroupIDs []int64
+	Submission     *domain.Submission
+}
+
+type SubmissionView struct {
+	Submission domain.Submission
+	Student    domain.Student
+	Group      domain.Group
 }
 
 func (s *TaskService) Create(ctx context.Context, in CreateTaskInput) (*TaskView, error) {
@@ -112,6 +139,115 @@ func (s *TaskService) ListForTeacher(ctx context.Context, roomCode, teacherToken
 			TargetGroupIDs:     item.TargetGroupIDs,
 			SubmittedCount:     item.SubmittedCount,
 			TargetStudentCount: item.TargetStudentCount,
+		})
+	}
+
+	return out, nil
+}
+
+func (s *TaskService) ListForStudent(ctx context.Context, studentToken string) ([]StudentTaskView, error) {
+	student, err := s.verifyStudent(ctx, studentToken)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := s.submissions.ListTasksForStudent(ctx, student.ID, student.RoomID, student.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]StudentTaskView, 0, len(items))
+	for _, item := range items {
+		out = append(out, StudentTaskView{
+			Task:           item.Task,
+			TargetGroupIDs: item.TargetGroupIDs,
+			Submission:     item.Submission,
+		})
+	}
+
+	return out, nil
+}
+
+func (s *TaskService) SubmitText(ctx context.Context, taskID int64, studentToken, contentText string) (*domain.Submission, error) {
+	if taskID <= 0 {
+		return nil, apperr.TaskNotFound()
+	}
+
+	student, err := s.verifyStudent(ctx, studentToken)
+	if err != nil {
+		return nil, err
+	}
+
+	content := strings.TrimSpace(contentText)
+	if content == "" || len([]rune(content)) > maxSubmissionTextLen {
+		return nil, apperr.InvalidSubmissionContent()
+	}
+
+	task, err := s.submissions.GetTargetedTaskForStudent(ctx, taskID, student.RoomID, student.GroupID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, apperr.TaskNotFound()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	room, err := s.tasks.GetRoomByTaskID(ctx, taskID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, apperr.TaskNotFound()
+	}
+	if err != nil {
+		return nil, err
+	}
+	if room.Status == domain.RoomStatusEnded {
+		return nil, apperr.RoomEnded()
+	}
+
+	if task.Status != domain.TaskStatusPublished {
+		return nil, apperr.TaskNotAcceptingSubmissions()
+	}
+	if !time.Now().UTC().Before(task.DeadlineAt.UTC()) {
+		return nil, apperr.TaskNotAcceptingSubmissions()
+	}
+
+	submission, err := s.submissions.CreateText(ctx, taskID, student, content)
+	if errors.Is(err, repository.ErrDuplicate) {
+		return nil, apperr.SubmissionDuplicated()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return submission, nil
+}
+
+func (s *TaskService) ListSubmissionsForTeacher(ctx context.Context, taskID int64, teacherToken string) ([]SubmissionView, error) {
+	if taskID <= 0 {
+		return nil, apperr.TaskNotFound()
+	}
+
+	room, err := s.tasks.GetRoomByTaskID(ctx, taskID)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, apperr.TaskNotFound()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.verifyTeacherAgainstRoom(ctx, room, teacherToken); err != nil {
+		return nil, err
+	}
+
+	items, err := s.submissions.ListByTaskID(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]SubmissionView, 0, len(items))
+	for _, item := range items {
+		out = append(out, SubmissionView{
+			Submission: item.Submission,
+			Student:    item.Student,
+			Group:      item.Group,
 		})
 	}
 
@@ -195,6 +331,22 @@ func (s *TaskService) validateTargetGroups(ctx context.Context, roomID int64, gr
 	}
 
 	return out, nil
+}
+
+func (s *TaskService) verifyStudent(ctx context.Context, studentToken string) (*domain.Student, error) {
+	if studentToken == "" {
+		return nil, apperr.InvalidStudentToken()
+	}
+
+	student, err := s.students.GetByClientToken(ctx, studentToken)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, apperr.InvalidStudentToken()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return student, nil
 }
 
 func (s *TaskService) verifyTeacherByRoomCode(ctx context.Context, roomCode, teacherToken string) (*domain.Room, error) {
