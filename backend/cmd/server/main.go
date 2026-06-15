@@ -66,10 +66,11 @@ func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	groupRepo := repository.NewGroupRepository(db)
 	studentRepo := repository.NewStudentRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
+	submissionRepo := repository.NewSubmissionRepository(db)
 
 	roomSvc := service.NewRoomService(roomRepo, groupRepo, cfg.FrontendBaseURL)
 	studentSvc := service.NewStudentService(roomRepo, groupRepo, studentRepo)
-	taskSvc := service.NewTaskService(roomRepo, groupRepo, taskRepo)
+	taskSvc := service.NewTaskService(roomRepo, groupRepo, studentRepo, taskRepo, submissionRepo)
 
 	api := router.Group("/api")
 	handler.NewRoomHandler(roomSvc).Register(api)

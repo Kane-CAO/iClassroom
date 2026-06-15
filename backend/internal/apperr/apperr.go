@@ -102,6 +102,26 @@ func InvalidTargetGroup() *Error {
 	return New(http.StatusBadRequest, "INVALID_TARGET_GROUP", "targetGroupIds must belong to this room")
 }
 
+func InvalidSubmissionContent() *Error {
+	return New(http.StatusBadRequest, "INVALID_SUBMISSION_CONTENT", "contentText is required and must be at most 5000 characters")
+}
+
+func SubmissionDuplicated() *Error {
+	return New(http.StatusConflict, "SUBMISSION_DUPLICATED", "student has already submitted this task")
+}
+
+func TaskNotAcceptingSubmissions() *Error {
+	return New(http.StatusConflict, "TASK_NOT_ACCEPTING_SUBMISSIONS", "task is not accepting submissions")
+}
+
+func SubmissionNotFound() *Error {
+	return New(http.StatusNotFound, "SUBMISSION_NOT_FOUND", "submission not found")
+}
+
+func InvalidScore() *Error {
+	return New(http.StatusBadRequest, "INVALID_SCORE", "score must be an integer between 1 and 10")
+}
+
 // InvalidRequest is used for malformed request bodies / unbindable input.
 func InvalidRequest(message string) *Error {
 	if message == "" {

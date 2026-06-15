@@ -1,8 +1,3 @@
-// Package service holds the business rules of the iClassroom MVP: validation,
-// state transitions, transactions and token minting. It depends on the
-// repository layer through the narrow interfaces declared here (the consumer
-// owns the interface), which keeps the services unit-testable with fakes and
-// free of any HTTP concern.
 package service
 
 import (
@@ -38,4 +33,17 @@ type TaskRepository interface {
 	ListTargetGroupIDs(ctx context.Context, taskID int64) ([]int64, error)
 	GetRoomByTaskID(ctx context.Context, taskID int64) (*domain.Room, error)
 	UpdateStatus(ctx context.Context, taskID int64, status domain.TaskStatus) error
+}
+
+// SubmissionRepository is the persistence surface the services need for submissions,
+// grading, and leaderboard reads.
+type SubmissionRepository interface {
+	ListTasksForStudent(ctx context.Context, studentID, roomID, groupID int64) ([]repository.StudentTaskWithSubmission, error)
+	GetTargetedTaskForStudent(ctx context.Context, taskID, roomID, groupID int64) (*domain.Task, error)
+	CreateText(ctx context.Context, taskID int64, student *domain.Student, contentText string) (*domain.Submission, error)
+	ListByTaskID(ctx context.Context, taskID int64) ([]repository.SubmissionWithStudent, error)
+
+	GetRoomBySubmissionID(ctx context.Context, submissionID int64) (*domain.Room, error)
+	GradeSubmission(ctx context.Context, submissionID int64, score int, comment string) (*domain.Submission, error)
+	ListLeaderboardByRoomID(ctx context.Context, roomID int64) ([]repository.LeaderboardItem, error)
 }
