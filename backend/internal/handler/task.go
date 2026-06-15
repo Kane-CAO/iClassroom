@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +32,12 @@ func (h *TaskHandler) Register(rg *gin.RouterGroup) {
 	rg.POST("/student/tasks/:taskId/submit", h.Submit)
 	rg.GET("/teacher/tasks/:taskId/submissions", h.ListSubmissions)
 
+	rg.POST("/teacher/submissions/:submissionId/grade", h.GradeSubmission)
+	rg.GET("/student/me/results", h.StudentResults)
+	rg.GET("/student/rooms/:roomCode/ranking", h.StudentRanking)
+
+	// Compatibility routes kept temporarily for existing callers.
+	// They can be removed after frontend and teammate branches migrate.
 	rg.PATCH("/teacher/submissions/:submissionId/grade", h.GradeSubmission)
 	rg.GET("/teacher/rooms/:roomCode/leaderboard", h.TeacherLeaderboard)
 	rg.GET("/student/me/leaderboard", h.StudentLeaderboard)
@@ -125,9 +132,17 @@ func (h *TaskHandler) Submit(c *gin.Context) {
 	}
 
 	var req submitTaskRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, apperr.InvalidRequest("malformed request body"))
-		return
+	contentType := c.GetHeader("Content-Type")
+
+	switch {
+	case strings.HasPrefix(contentType, "multipart/form-data"),
+		strings.HasPrefix(contentType, "application/x-www-form-urlencoded"):
+		req.ContentText = c.PostForm("contentText")
+	default:
+		if err := c.ShouldBindJSON(&req); err != nil {
+			respondError(c, apperr.InvalidRequest("malformed request body"))
+			return
+		}
 	}
 
 	submission, err := h.tasks.SubmitText(c.Request.Context(), taskID, c.GetHeader(headerStudentToken), req.ContentText)
@@ -164,7 +179,7 @@ func (h *TaskHandler) GradeSubmission(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, submissionJSON(submission))
+	response.Success(c, gradeSubmissionJSON(submission))
 }
 
 func (h *TaskHandler) ListSubmissions(c *gin.Context) {
@@ -185,10 +200,7 @@ func (h *TaskHandler) ListSubmissions(c *gin.Context) {
 		out = append(out, submissionWithStudentJSON(&item))
 	}
 
-	response.Success(c, gin.H{
-		"taskId":      taskID,
-		"submissions": out,
-	})
+	response.Success(c, out)
 }
 
 func (h *TaskHandler) TeacherLeaderboard(c *gin.Context) {
@@ -214,6 +226,31 @@ func (h *TaskHandler) StudentLeaderboard(c *gin.Context) {
 	}
 
 	response.Success(c, leaderboardJSON(view))
+}
+
+func (h *TaskHandler) StudentRanking(c *gin.Context) {
+	roomCode := c.Param("roomCode")
+	token := c.GetHeader(headerStudentToken)
+
+	view, err := h.tasks.GetRankingForStudent(c.Request.Context(), roomCode, token)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	response.Success(c, rankingJSON(view))
+}
+
+func (h *TaskHandler) StudentResults(c *gin.Context) {
+	token := c.GetHeader(headerStudentToken)
+
+	view, err := h.tasks.GetStudentResults(c.Request.Context(), token)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	response.Success(c, studentResultsJSON(view))
 }
 
 func (h *TaskHandler) Pause(c *gin.Context) {
@@ -261,22 +298,24 @@ func taskViewJSON(task *service.TaskView) gin.H {
 }
 
 func studentTaskViewJSON(task *service.StudentTaskView) gin.H {
-	var submission any
+	mySubmissionStatus := "notSubmitted"
+	var myScore any
+
 	if task.Submission != nil {
-		submission = submissionJSON(task.Submission)
+		mySubmissionStatus = string(task.Submission.Status)
+		if task.Submission.Score != nil {
+			myScore = *task.Submission.Score
+		}
 	}
 
 	return gin.H{
-		"taskId":         task.Task.ID,
-		"title":          task.Task.Title,
-		"description":    task.Task.Description,
-		"attachmentUrl":  task.Task.AttachmentURL,
-		"deadlineAt":     task.Task.DeadlineAt,
-		"targetType":     task.Task.TargetType,
-		"targetGroupIds": task.TargetGroupIDs,
-		"status":         task.Task.Status,
-		"createdAt":      task.Task.CreatedAt,
-		"submission":     submission,
+		"taskId":             task.Task.ID,
+		"title":              task.Task.Title,
+		"description":        task.Task.Description,
+		"deadlineAt":         task.Task.DeadlineAt,
+		"status":             task.Task.Status,
+		"mySubmissionStatus": mySubmissionStatus,
+		"myScore":            myScore,
 	}
 }
 
@@ -287,11 +326,23 @@ func submissionJSON(submission *domain.Submission) gin.H {
 		"studentId":    submission.StudentID,
 		"groupId":      submission.GroupID,
 		"contentText":  submission.ContentText,
+		"images":       submissionImagesJSON(submission.Images),
 		"status":       submission.Status,
 		"score":        submission.Score,
 		"comment":      submission.Comment,
 		"submittedAt":  submission.SubmittedAt,
 		"gradedAt":     submission.GradedAt,
+	}
+}
+
+func gradeSubmissionJSON(result *service.GradeSubmissionResult) gin.H {
+	return gin.H{
+		"submissionId":    result.Submission.ID,
+		"score":           result.Submission.Score,
+		"comment":         result.Submission.Comment,
+		"status":          result.Submission.Status,
+		"gradedAt":        result.Submission.GradedAt,
+		"groupScoreTotal": result.GroupScoreTotal,
 	}
 }
 
@@ -304,12 +355,64 @@ func submissionWithStudentJSON(item *service.SubmissionView) gin.H {
 		"groupId":      item.Group.ID,
 		"groupName":    item.Group.GroupName,
 		"contentText":  item.Submission.ContentText,
+		"images":       submissionImagesJSON(item.Submission.Images),
 		"status":       item.Submission.Status,
 		"score":        item.Submission.Score,
 		"comment":      item.Submission.Comment,
 		"submittedAt":  item.Submission.SubmittedAt,
 		"gradedAt":     item.Submission.GradedAt,
 	}
+}
+
+func submissionImagesJSON(images []domain.SubmissionImage) []gin.H {
+	out := make([]gin.H, 0, len(images))
+	for _, image := range images {
+		out = append(out, gin.H{
+			"imageId":  image.ID,
+			"fileUrl":  image.FileURL,
+			"fileName": image.FileName,
+			"fileSize": image.FileSize,
+			"mimeType": image.MimeType,
+		})
+	}
+	return out
+}
+
+func studentResultsJSON(view *service.StudentResultsView) gin.H {
+	results := make([]gin.H, 0, len(view.Results))
+	for _, result := range view.Results {
+		results = append(results, gin.H{
+			"taskId":           result.Task.ID,
+			"taskTitle":        result.Task.Title,
+			"submissionStatus": result.SubmissionStatus,
+			"score":            result.Score,
+			"comment":          result.Comment,
+			"submittedAt":      result.SubmittedAt,
+			"gradedAt":         result.GradedAt,
+		})
+	}
+
+	return gin.H{
+		"studentId": view.Student.ID,
+		"nickname":  view.Student.Nickname,
+		"groupId":   view.Group.ID,
+		"groupName": view.Group.GroupName,
+		"results":   results,
+	}
+}
+
+func rankingJSON(view *service.LeaderboardView) []gin.H {
+	entries := make([]gin.H, 0, len(view.Entries))
+	for _, entry := range view.Entries {
+		entries = append(entries, gin.H{
+			"rank":         entry.Rank,
+			"groupId":      entry.Group.ID,
+			"groupName":    entry.Group.GroupName,
+			"scoreTotal":   entry.Group.ScoreTotal,
+			"studentCount": entry.CurrentCount,
+		})
+	}
+	return entries
 }
 
 func leaderboardJSON(view *service.LeaderboardView) gin.H {
