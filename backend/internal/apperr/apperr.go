@@ -122,6 +122,10 @@ func InvalidScore() *Error {
 	return New(http.StatusBadRequest, "INVALID_SCORE", "score must be an integer between 1 and 10")
 }
 
+func InvalidDisplayMode() *Error {
+	return New(http.StatusBadRequest, "INVALID_DISPLAY_MODE", "displayMode must be anonymous or showGroup")
+}
+
 // InvalidRequest is used for malformed request bodies / unbindable input.
 func InvalidRequest(message string) *Error {
 	if message == "" {
