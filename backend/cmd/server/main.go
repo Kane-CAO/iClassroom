@@ -81,6 +81,7 @@ func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	featuredSvc := service.NewFeaturedAnswerService(roomRepo, featuredRepo)
 	displaySvc := service.NewDisplayService(roomRepo, submissionRepo, displayRepo)
 	analyticsSvc := service.NewAnalyticsService(roomRepo, analyticsRepo)
+	exportSvc := service.NewExportService(roomRepo, taskRepo, submissionRepo)
 
 	api := router.Group("/api")
 	handler.NewRoomHandler(roomSvc).Register(api)
@@ -89,6 +90,7 @@ func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	handler.NewFeaturedAnswerHandler(featuredSvc).Register(api)
 	handler.NewDisplayHandler(displaySvc).Register(api)
 	handler.NewAnalyticsHandler(analyticsSvc).Register(api)
+	handler.NewExportHandler(exportSvc).Register(api)
 }
 
 func healthHandler(cfg *config.Config, db *sql.DB) gin.HandlerFunc {

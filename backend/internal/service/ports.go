@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"iclassroom/backend/internal/domain"
 	"iclassroom/backend/internal/repository"
@@ -12,6 +13,7 @@ type RoomRepository interface {
 	CreateRoomWithGroups(ctx context.Context, room *domain.Room) ([]domain.Group, error)
 	GetByRoomCode(ctx context.Context, code string) (*domain.Room, error)
 	GetByTeacherToken(ctx context.Context, token string) (*domain.Room, error)
+	EndRoom(ctx context.Context, roomID int64, endedAt time.Time) error
 }
 
 // GroupRepository is the persistence surface the services need for groups.
