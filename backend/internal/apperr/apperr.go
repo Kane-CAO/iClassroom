@@ -122,6 +122,22 @@ func InvalidScore() *Error {
 	return New(http.StatusBadRequest, "INVALID_SCORE", "score must be an integer between 1 and 10")
 }
 
+func TooManyImages() *Error {
+	return New(http.StatusBadRequest, "TOO_MANY_IMAGES", "at most 3 images can be uploaded")
+}
+
+func ImageTooLarge() *Error {
+	return New(http.StatusBadRequest, "IMAGE_TOO_LARGE", "each image must be 5MB or smaller")
+}
+
+func InvalidImageType() *Error {
+	return New(http.StatusBadRequest, "INVALID_IMAGE_TYPE", "image must be jpeg, png, or webp")
+}
+
+func UploadFailed() *Error {
+	return New(http.StatusInternalServerError, "UPLOAD_FAILED", "failed to upload images")
+}
+
 // InvalidRequest is used for malformed request bodies / unbindable input.
 func InvalidRequest(message string) *Error {
 	if message == "" {

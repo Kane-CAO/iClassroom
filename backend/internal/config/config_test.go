@@ -8,6 +8,7 @@ func TestLoadDefaults(t *testing.T) {
 		"APP_ENV", "SERVER_PORT", "DB_HOST", "DB_PORT", "DB_USER",
 		"DB_PASSWORD", "DB_NAME", "DB_MAX_OPEN_CONNS", "DB_MAX_IDLE_CONNS",
 		"DB_CONN_MAX_LIFETIME_MINUTES", "CORS_ALLOWED_ORIGINS",
+		"BACKEND_BASE_URL", "UPLOAD_DIR",
 	} {
 		t.Setenv(k, "")
 	}
@@ -73,6 +74,8 @@ func TestValidateRejectsEmptyDBName(t *testing.T) {
 		DBMaxOpenConns:     10,
 		DBMaxIdleConns:     10,
 		CORSAllowedOrigins: []string{"http://localhost:5173"},
+		BackendBaseURL:     "http://localhost:8080",
+		UploadDir:          "./uploads",
 	}
 	if err := cfg.validate(); err == nil {
 		t.Error("validate() = nil, want error for empty DBName")
@@ -83,6 +86,8 @@ func TestDBDSN(t *testing.T) {
 	cfg := &Config{
 		DBHost: "127.0.0.1", DBPort: "3306",
 		DBUser: "root", DBPassword: "secret", DBName: "iclassroom",
+		BackendBaseURL: "http://localhost:8080",
+		UploadDir:      "./uploads",
 	}
 	want := "root:secret@tcp(127.0.0.1:3306)/iclassroom?charset=utf8mb4&parseTime=true&loc=UTC"
 	if got := cfg.DBDSN(); got != want {

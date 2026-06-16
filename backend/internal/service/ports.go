@@ -41,6 +41,8 @@ type SubmissionRepository interface {
 	ListTasksForStudent(ctx context.Context, studentID, roomID, groupID int64) ([]repository.StudentTaskWithSubmission, error)
 	GetTargetedTaskForStudent(ctx context.Context, taskID, roomID, groupID int64) (*domain.Task, error)
 	CreateText(ctx context.Context, taskID int64, student *domain.Student, contentText string) (*domain.Submission, error)
+	CreateImages(ctx context.Context, submissionID int64, images []domain.SubmissionImage) ([]domain.SubmissionImage, error)
+	DeleteByID(ctx context.Context, submissionID int64) error
 	ListByTaskID(ctx context.Context, taskID int64) ([]repository.SubmissionWithStudent, error)
 
 	GetRoomBySubmissionID(ctx context.Context, submissionID int64) (*domain.Room, error)

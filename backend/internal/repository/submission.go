@@ -91,6 +91,55 @@ func scanSubmissionRow(
 	return sub
 }
 
+func (r *SubmissionRepository) loadImagesBySubmissionID(ctx context.Context, submissionID int64) ([]domain.SubmissionImage, error) {
+	const q = `SELECT id, submission_id, file_url, file_path, file_name, file_size, mime_type, created_at
+FROM submission_images
+WHERE submission_id = ?
+ORDER BY id ASC`
+
+	rows, err := r.db.QueryContext(ctx, q, submissionID)
+	if err != nil {
+		return nil, fmt.Errorf("repository: list submission images: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make([]domain.SubmissionImage, 0)
+	for rows.Next() {
+		var image domain.SubmissionImage
+		if err := rows.Scan(
+			&image.ID,
+			&image.SubmissionID,
+			&image.FileURL,
+			&image.FilePath,
+			&image.FileName,
+			&image.FileSize,
+			&image.MimeType,
+			&image.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("repository: scan submission image: %w", err)
+		}
+		out = append(out, image)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("repository: iterate submission images: %w", err)
+	}
+
+	return out, nil
+}
+
+func (r *SubmissionRepository) attachSubmissionImages(ctx context.Context, sub *domain.Submission) error {
+	if sub == nil || sub.ID == 0 {
+		return nil
+	}
+
+	images, err := r.loadImagesBySubmissionID(ctx, sub.ID)
+	if err != nil {
+		return err
+	}
+	sub.Images = images
+	return nil
+}
+
 // ListTasksForStudent returns every task assigned to the student, together with
 // the student's existing submission when present.
 func (r *SubmissionRepository) ListTasksForStudent(ctx context.Context, studentID, roomID, groupID int64) ([]StudentTaskWithSubmission, error) {
@@ -216,6 +265,9 @@ ORDER BY t.created_at DESC, t.id DESC`
 			if submissionUpdatedAt.Valid {
 				sub.UpdatedAt = submissionUpdatedAt.Time
 			}
+			if err := r.attachSubmissionImages(ctx, &sub); err != nil {
+				return nil, err
+			}
 			item.Submission = &sub
 		}
 
@@ -328,6 +380,9 @@ WHERE id = ?`
 		t := gradedAt.Time
 		sub.GradedAt = &t
 	}
+	if err := r.attachSubmissionImages(ctx, &sub); err != nil {
+		return nil, err
+	}
 
 	return &sub, nil
 }
@@ -394,23 +449,26 @@ ORDER BY s.submitted_at DESC, s.id DESC`
 			return nil, fmt.Errorf("repository: scan submission with student: %w", err)
 		}
 
-		if contentText.Valid {
-			item.Submission.ContentText = contentText.String
-		}
-		if score.Valid {
-			scoreValue := int(score.Int64)
+			if contentText.Valid {
+				item.Submission.ContentText = contentText.String
+			}
+			if score.Valid {
+				scoreValue := int(score.Int64)
 			item.Submission.Score = &scoreValue
 		}
 		if comment.Valid {
 			item.Submission.Comment = comment.String
 		}
-		if gradedAt.Valid {
-			t := gradedAt.Time
-			item.Submission.GradedAt = &t
-		}
+			if gradedAt.Valid {
+				t := gradedAt.Time
+				item.Submission.GradedAt = &t
+			}
+			if err := r.attachSubmissionImages(ctx, &item.Submission); err != nil {
+				return nil, err
+			}
 
-		out = append(out, item)
-	}
+			out = append(out, item)
+		}
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("repository: iterate submissions: %w", err)

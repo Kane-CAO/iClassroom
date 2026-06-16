@@ -40,6 +40,13 @@ type Config struct {
 	// build the student joinUrl and the teacher dashboard URL returned on room
 	// creation (see docs/api.md). No trailing slash.
 	FrontendBaseURL string
+
+	// BackendBaseURL is the public base URL of the backend service. It is used
+	// to build upload file URLs returned for submission images.
+	BackendBaseURL string
+
+	// UploadDir is the filesystem root for uploaded files.
+	UploadDir string
 }
 
 // IsProduction reports whether the service runs in production mode.
@@ -81,6 +88,8 @@ func Load() (*Config, error) {
 		CORSAllowedOrigins: getEnvList("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),
 
 		FrontendBaseURL: strings.TrimRight(getEnv("FRONTEND_BASE_URL", "http://localhost:5173"), "/"),
+		BackendBaseURL:  strings.TrimRight(getEnv("BACKEND_BASE_URL", "http://localhost:8080"), "/"),
+		UploadDir:       getEnv("UPLOAD_DIR", "./uploads"),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -111,6 +120,12 @@ func (c *Config) validate() error {
 	}
 	if c.FrontendBaseURL == "" {
 		return fmt.Errorf("config: FRONTEND_BASE_URL must not be empty")
+	}
+	if c.BackendBaseURL == "" {
+		return fmt.Errorf("config: BACKEND_BASE_URL must not be empty")
+	}
+	if c.UploadDir == "" {
+		return fmt.Errorf("config: UPLOAD_DIR must not be empty")
 	}
 	return nil
 }
