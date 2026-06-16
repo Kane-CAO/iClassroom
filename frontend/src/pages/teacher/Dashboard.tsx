@@ -1,9 +1,20 @@
+import { useCallback, useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import TeacherHeader from '../../components/layout/TeacherHeader'
 import Card from '../../components/ui/Card'
 import { btnPrimary } from '../../components/ui/buttons'
+import { useRoomWebSocket } from '../../hooks/useRoomWebSocket'
 import { teacherMocks } from '../../mocks'
+import type { RoomWebSocketEventType } from '../../api/websocket'
+
+const DASHBOARD_WS_EVENTS: readonly RoomWebSocketEventType[] = [
+  'student_joined',
+  'submission_created',
+  'score_updated',
+  'ranking_updated',
+  'room_ended',
+]
 
 // /teacher/rooms/:roomCode/dashboard
 // 迁移自 docs/prototypes/iClassroom.html 的 #page-home（My Courses 概览）。
@@ -11,6 +22,26 @@ export default function Dashboard() {
   const { roomCode = 'ABC123' } = useParams()
   const navigate = useNavigate()
   const { courses, announcements, assignments, calendar } = teacherMocks
+  const [refreshVersion, setRefreshVersion] = useState(0)
+
+  const refreshDashboardData = useCallback(() => {
+    setRefreshVersion((version) => version + 1)
+  }, [])
+
+  useEffect(() => {
+    // TODO: replace mock data with room overview/tasks API refetch when backend integration lands.
+  }, [refreshVersion])
+
+  useRoomWebSocket({
+    roomCode,
+    role: 'teacher',
+    onEvent: (event) => {
+      if (DASHBOARD_WS_EVENTS.includes(event.type)) {
+        refreshDashboardData()
+      }
+    },
+    onReconnect: refreshDashboardData,
+  })
 
   return (
     <div className="min-h-screen bg-canvas text-ink dark:bg-slate-950 dark:text-slate-100">

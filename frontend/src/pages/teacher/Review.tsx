@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, Clock, Pause, Play, Plus, RotateCcw, Search } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import TeacherHeader from '../../components/layout/TeacherHeader'
@@ -8,7 +8,9 @@ import Badge from '../../components/ui/Badge'
 import { btnPrimary, btnSecondary } from '../../components/ui/buttons'
 import { useToast } from '../../components/ui/useToast'
 import { useCountdown } from '../../hooks/useCountdown'
+import { useRoomWebSocket } from '../../hooks/useRoomWebSocket'
 import { teacherMocks } from '../../mocks'
+import type { RoomWebSocketEventType } from '../../api/websocket'
 import type { ReviewStatus, SubmissionVM } from '../../types'
 
 type Filter = 'all' | ReviewStatus
@@ -18,6 +20,14 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'submitted', label: 'Submitted' },
   { key: 'pending', label: 'Pending' },
   { key: 'reviewed', label: 'Reviewed' },
+]
+
+const REVIEW_WS_EVENTS: readonly RoomWebSocketEventType[] = [
+  'student_joined',
+  'submission_created',
+  'score_updated',
+  'ranking_updated',
+  'room_ended',
 ]
 
 // /teacher/rooms/:roomCode/review
@@ -36,6 +46,26 @@ export default function Review() {
   const [query, setQuery] = useState('')
   const [score, setScore] = useState(items[0].score || 1)
   const [feedback, setFeedback] = useState(items[0].feedback)
+  const [refreshVersion, setRefreshVersion] = useState(0)
+
+  const refreshReviewData = useCallback(() => {
+    setRefreshVersion((version) => version + 1)
+  }, [])
+
+  useEffect(() => {
+    // TODO: replace mock submissions with API refetch for the current review task.
+  }, [refreshVersion])
+
+  useRoomWebSocket({
+    roomCode,
+    role: 'teacher',
+    onEvent: (event) => {
+      if (REVIEW_WS_EVENTS.includes(event.type)) {
+        refreshReviewData()
+      }
+    },
+    onReconnect: refreshReviewData,
+  })
 
   const current = items.find((s) => s.id === selectedId) ?? items[0]
 

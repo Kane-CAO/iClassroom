@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, ImagePlus, Send } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import StudentHeader from '../../components/layout/StudentHeader'
@@ -6,8 +6,19 @@ import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import { btnSecondary, btnGradient } from '../../components/ui/buttons'
 import { useToast } from '../../components/ui/useToast'
+import { useRoomWebSocket } from '../../hooks/useRoomWebSocket'
 import { questionDone, useStudentSession } from '../../hooks/useStudentSession'
 import { studentMocks } from '../../mocks'
+import type { RoomWebSocketEventType } from '../../api/websocket'
+
+const TASK_DETAIL_WS_EVENTS: readonly RoomWebSocketEventType[] = [
+  'task_published',
+  'task_paused',
+  'task_closed',
+  'score_updated',
+  'ranking_updated',
+  'room_ended',
+]
 
 // /student/tasks/:taskId
 // 迁移自 docs/prototypes/student.html 的答题面板（题目导航 + 文字 / 图片提交）。
@@ -18,7 +29,9 @@ export default function TaskDetail() {
   const { showToast, ToastView } = useToast()
   const { identity, answers, submitted, setAnswer, submit } = useStudentSession()
   const room = studentMocks.studentRoom
+  const roomCode = identity?.roomCode ?? room.roomCode
   const questions = studentMocks.questions
+  const [refreshVersion, setRefreshVersion] = useState(0)
 
   const foundIndex = questions.findIndex((q) => q.id === taskId)
   const index = foundIndex >= 0 ? foundIndex : 0
@@ -29,6 +42,26 @@ export default function TaskDetail() {
   const text = answers[index] ?? ''
 
   const goTo = (i: number) => navigate(`/student/tasks/${questions[i].id}`)
+
+  const refreshTaskDetailData = useCallback(() => {
+    setRefreshVersion((version) => version + 1)
+  }, [])
+
+  useEffect(() => {
+    // TODO: replace mock task detail/results data with API refetch for the current student.
+  }, [refreshVersion])
+
+  const ws = useRoomWebSocket({
+    roomCode,
+    role: 'student',
+    clientToken: identity?.clientToken,
+    onEvent: (event) => {
+      if (TASK_DETAIL_WS_EVENTS.includes(event.type)) {
+        refreshTaskDetailData()
+      }
+    },
+    onReconnect: refreshTaskDetailData,
+  })
 
   const onSubmit = () => {
     submit()
@@ -45,7 +78,7 @@ export default function TaskDetail() {
 
   return (
     <div className="min-h-screen bg-soft text-ink dark:bg-slate-950 dark:text-slate-100">
-      <StudentHeader roomCode={room.roomCode} student={identity} />
+      <StudentHeader roomCode={roomCode} connected={ws.isConnected} student={identity} />
 
       <main className="mx-auto max-w-[1180px] px-6 py-8 sm:px-8">
         <Card>

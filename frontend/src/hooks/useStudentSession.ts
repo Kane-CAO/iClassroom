@@ -8,6 +8,8 @@ import { questions } from '../mocks/student'
 export interface StudentIdentity {
   name: string
   team: string
+  roomCode?: string
+  clientToken?: string
 }
 
 const KEY = {

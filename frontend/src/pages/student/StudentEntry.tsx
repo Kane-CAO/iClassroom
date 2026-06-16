@@ -86,7 +86,7 @@ export default function StudentEntry() {
       groupId: Number(groupId),
     })
 
-    join({ name: res.nickname, team: res.groupName })
+    join({ name: res.nickname, team: res.groupName, roomCode: res.roomCode, clientToken: res.clientToken })
     showToast('Joined classroom')
     setTimeout(() => navigate('/student/classroom'), 500)
   }

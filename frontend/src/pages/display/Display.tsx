@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import QRCodePanel from '../../components/QRCodePanel'
 import GroupTable from '../../components/GroupTable'
@@ -6,7 +7,16 @@ import TaskCard from '../../components/TaskCard'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import { useCountdown } from '../../hooks/useCountdown'
+import { useRoomWebSocket } from '../../hooks/useRoomWebSocket'
 import { studentMocks } from '../../mocks'
+import type { RoomWebSocketEventType } from '../../api/websocket'
+
+const DISPLAY_WS_EVENTS: readonly RoomWebSocketEventType[] = [
+  'ranking_updated',
+  'featured_answer_updated',
+  'submission_created',
+  'room_ended',
+]
 
 // /teacher/rooms/:roomCode/display
 // 说明：docs/prototypes 中没有独立的大屏 HTML。本页以相同视觉风格、复用
@@ -17,6 +27,26 @@ export default function Display() {
   const room = studentMocks.studentRoom
   const code = roomCode ?? room.roomCode
   const timer = useCountdown(studentMocks.remainingSeconds, true)
+  const [refreshVersion, setRefreshVersion] = useState(0)
+
+  const refreshDisplayData = useCallback(() => {
+    setRefreshVersion((version) => version + 1)
+  }, [])
+
+  useEffect(() => {
+    // TODO: replace mock display data with GET /api/teacher/rooms/:roomCode/display refetch.
+  }, [refreshVersion])
+
+  useRoomWebSocket({
+    roomCode: code,
+    role: 'display',
+    onEvent: (event) => {
+      if (DISPLAY_WS_EVENTS.includes(event.type)) {
+        refreshDisplayData()
+      }
+    },
+    onReconnect: refreshDisplayData,
+  })
 
   const base = import.meta.env.VITE_STUDENT_BASE_URL ?? `${window.location.origin}/student`
   const joinUrl = `${base}?room=${code}`

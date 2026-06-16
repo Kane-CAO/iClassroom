@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from 'react'
 import { CheckCircle2, Clock, Download, RefreshCw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import StudentHeader from '../../components/layout/StudentHeader'
@@ -8,9 +9,20 @@ import TaskCard from '../../components/TaskCard'
 import RankingBoard from '../../components/RankingBoard'
 import { useToast } from '../../components/ui/useToast'
 import { useCountdown } from '../../hooks/useCountdown'
+import { useRoomWebSocket } from '../../hooks/useRoomWebSocket'
 import { questionDone, useStudentSession } from '../../hooks/useStudentSession'
 import { studentMocks } from '../../mocks'
+import type { RoomWebSocketEventType } from '../../api/websocket'
 import type { BadgeTone } from '../../types'
+
+const CLASSROOM_WS_EVENTS: readonly RoomWebSocketEventType[] = [
+  'task_published',
+  'task_paused',
+  'task_closed',
+  'score_updated',
+  'ranking_updated',
+  'room_ended',
+]
 
 // /student/classroom
 // 迁移自 docs/prototypes/student.html 的 #classroomScreen 概览部分
@@ -21,7 +33,29 @@ export default function Classroom() {
   const timer = useCountdown(studentMocks.remainingSeconds, true)
   const { identity, answers, submitted, reviewed, doneCount, review } = useStudentSession()
   const room = studentMocks.studentRoom
+  const roomCode = identity?.roomCode ?? room.roomCode
+  const [refreshVersion, setRefreshVersion] = useState(0)
   const team = identity?.team ?? studentMocks.defaultStudentIdentity.team
+
+  const refreshClassroomData = useCallback(() => {
+    setRefreshVersion((version) => version + 1)
+  }, [])
+
+  useEffect(() => {
+    // TODO: replace mock classroom/tasks/ranking data with API refetch for the current student.
+  }, [refreshVersion])
+
+  const ws = useRoomWebSocket({
+    roomCode,
+    role: 'student',
+    clientToken: identity?.clientToken,
+    onEvent: (event) => {
+      if (CLASSROOM_WS_EVENTS.includes(event.type)) {
+        refreshClassroomData()
+      }
+    },
+    onReconnect: refreshClassroomData,
+  })
 
   const status: { label: string; tone: BadgeTone } = reviewed
     ? { label: 'Scored', tone: 'emerald' }
@@ -44,14 +78,14 @@ export default function Classroom() {
 
   return (
     <div className="min-h-screen bg-soft text-ink dark:bg-slate-950 dark:text-slate-100">
-      <StudentHeader roomCode={room.roomCode} student={identity} />
+      <StudentHeader roomCode={roomCode} connected={ws.isConnected} student={identity} />
 
       <main className="mx-auto max-w-[1180px] px-6 py-8 sm:px-8">
         <section className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
           <RoomInfoCard
             eyebrow={room.course}
             title={room.assignment}
-            meta={`Teacher: ${room.teacher} · Room ${room.roomCode}`}
+            meta={`Teacher: ${room.teacher} · Room ${roomCode}`}
             right={
               <div className="rounded-lg bg-brand-50 px-5 py-4 text-center dark:bg-brand-500/10">
                 <p className="text-xs font-bold uppercase text-brand-700 dark:text-brand-100">Remaining Time</p>
