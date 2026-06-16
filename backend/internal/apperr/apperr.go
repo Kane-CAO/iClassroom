@@ -138,6 +138,10 @@ func UploadFailed() *Error {
 	return New(http.StatusInternalServerError, "UPLOAD_FAILED", "failed to upload images")
 }
 
+func InvalidDisplayMode() *Error {
+	return New(http.StatusBadRequest, "INVALID_DISPLAY_MODE", "displayMode must be anonymous or showGroup")
+}
+
 // InvalidRequest is used for malformed request bodies / unbindable input.
 func InvalidRequest(message string) *Error {
 	if message == "" {

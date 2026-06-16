@@ -49,3 +49,23 @@ type SubmissionRepository interface {
 	GradeSubmission(ctx context.Context, submissionID int64, score int, comment string) (*domain.Submission, error)
 	ListLeaderboardByRoomID(ctx context.Context, roomID int64) ([]repository.LeaderboardItem, error)
 }
+
+// FeaturedAnswerRepository is the persistence surface for featured answers.
+type FeaturedAnswerRepository interface {
+	GetRoomBySubmissionID(ctx context.Context, submissionID int64) (*domain.Room, error)
+	Upsert(ctx context.Context, roomID, submissionID int64, mode domain.DisplayMode) (*domain.FeaturedAnswer, error)
+}
+
+// DisplayRepository is the persistence surface for big-screen display data.
+type DisplayRepository interface {
+	GetCurrentTask(ctx context.Context, roomID int64) (*repository.DisplayTask, error)
+	ListFeaturedAnswers(ctx context.Context, roomID int64) ([]repository.FeaturedAnswerView, error)
+}
+
+// AnalyticsRepository is the persistence surface for teacher analytics data.
+type AnalyticsRepository interface {
+	CountStudents(ctx context.Context, roomID int64) (int, error)
+	ListGroupScores(ctx context.Context, roomID int64) ([]repository.GroupScore, error)
+	ListTaskCompletion(ctx context.Context, roomID int64) ([]repository.TaskCompletion, error)
+	ListSubmissionTimeline(ctx context.Context, roomID int64) ([]repository.SubmissionTimelinePoint, error)
+}

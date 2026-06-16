@@ -69,17 +69,26 @@ func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	studentRepo := repository.NewStudentRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
 	submissionRepo := repository.NewSubmissionRepository(db)
+	featuredRepo := repository.NewFeaturedAnswerRepository(db)
+	displayRepo := repository.NewDisplayRepository(db)
+	analyticsRepo := repository.NewAnalyticsRepository(db)
 	uploadStore := storage.NewLocalStorage(cfg.UploadDir, cfg.BackendBaseURL)
 	uploadSvc := service.NewLocalUploadService(uploadStore)
 
 	roomSvc := service.NewRoomService(roomRepo, groupRepo, cfg.FrontendBaseURL)
 	studentSvc := service.NewStudentService(roomRepo, groupRepo, studentRepo)
 	taskSvc := service.NewTaskService(roomRepo, groupRepo, studentRepo, taskRepo, submissionRepo, uploadSvc)
+	featuredSvc := service.NewFeaturedAnswerService(roomRepo, featuredRepo)
+	displaySvc := service.NewDisplayService(roomRepo, submissionRepo, displayRepo)
+	analyticsSvc := service.NewAnalyticsService(roomRepo, analyticsRepo)
 
 	api := router.Group("/api")
 	handler.NewRoomHandler(roomSvc).Register(api)
 	handler.NewStudentHandler(studentSvc).Register(api)
 	handler.NewTaskHandler(taskSvc).Register(api)
+	handler.NewFeaturedAnswerHandler(featuredSvc).Register(api)
+	handler.NewDisplayHandler(displaySvc).Register(api)
+	handler.NewAnalyticsHandler(analyticsSvc).Register(api)
 }
 
 func healthHandler(cfg *config.Config, db *sql.DB) gin.HandlerFunc {
