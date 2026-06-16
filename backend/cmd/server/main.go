@@ -16,6 +16,7 @@ import (
 	"iclassroom/backend/internal/response"
 	"iclassroom/backend/internal/service"
 	"iclassroom/backend/internal/storage"
+	"iclassroom/backend/internal/websocket"
 )
 
 func main() {
@@ -82,6 +83,12 @@ func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	displaySvc := service.NewDisplayService(roomRepo, submissionRepo, displayRepo)
 	analyticsSvc := service.NewAnalyticsService(roomRepo, analyticsRepo)
 	exportSvc := service.NewExportService(roomRepo, taskRepo, submissionRepo)
+
+	// Real-time channel. The hub manager is the single broadcast point shared
+	// across the app; the /ws endpoint is mounted at the root, not under /api.
+	wsManager := websocket.NewHubManager()
+	wsAuthSvc := service.NewWSAuthService(roomRepo, studentRepo)
+	handler.NewWSHandler(wsAuthSvc, wsManager).Register(router)
 
 	api := router.Group("/api")
 	handler.NewRoomHandler(roomSvc).Register(api)

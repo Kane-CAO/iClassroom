@@ -154,6 +154,12 @@ func ImageFileMissing() *Error {
 	return New(http.StatusInternalServerError, "IMAGE_FILE_MISSING", "export image file is missing")
 }
 
+// InvalidRole is returned when a WebSocket connection requests a role other
+// than teacher, student, or display.
+func InvalidRole() *Error {
+	return New(http.StatusBadRequest, "INVALID_ROLE", "role must be teacher, student, or display")
+}
+
 // InvalidRequest is used for malformed request bodies / unbindable input.
 func InvalidRequest(message string) *Error {
 	if message == "" {
