@@ -20,6 +20,7 @@ type TaskService struct {
 	students    StudentRepository
 	tasks       TaskRepository
 	submissions SubmissionRepository
+	uploads     UploadService
 }
 
 func NewTaskService(
@@ -28,13 +29,19 @@ func NewTaskService(
 	students StudentRepository,
 	tasks TaskRepository,
 	submissions SubmissionRepository,
+	uploads ...UploadService,
 ) *TaskService {
+	var uploadSvc UploadService
+	if len(uploads) > 0 {
+		uploadSvc = uploads[0]
+	}
 	return &TaskService{
 		rooms:       rooms,
 		groups:      groups,
 		students:    students,
 		tasks:       tasks,
 		submissions: submissions,
+		uploads:     uploadSvc,
 	}
 }
 
@@ -189,6 +196,10 @@ func (s *TaskService) ListForStudent(ctx context.Context, studentToken string) (
 }
 
 func (s *TaskService) SubmitText(ctx context.Context, taskID int64, studentToken, contentText string) (*domain.Submission, error) {
+	return s.SubmitWithImages(ctx, taskID, studentToken, contentText, nil)
+}
+
+func (s *TaskService) SubmitWithImages(ctx context.Context, taskID int64, studentToken, contentText string, images []UploadedFile) (*domain.Submission, error) {
 	if taskID <= 0 {
 		return nil, apperr.TaskNotFound()
 	}
@@ -237,6 +248,29 @@ func (s *TaskService) SubmitText(ctx context.Context, taskID int64, studentToken
 		return nil, err
 	}
 
+	if len(images) == 0 {
+		return submission, nil
+	}
+
+	if s.uploads == nil {
+		_ = s.submissions.DeleteByID(ctx, submission.ID)
+		return nil, apperr.UploadFailed()
+	}
+
+	savedImages, err := s.uploads.SaveSubmissionImages(ctx, room.RoomCode, taskID, student.ID, images)
+	if err != nil {
+		_ = s.submissions.DeleteByID(ctx, submission.ID)
+		return nil, err
+	}
+
+	storedImages, err := s.submissions.CreateImages(ctx, submission.ID, savedImages)
+	if err != nil {
+		_ = s.uploads.DeleteSubmissionImages(ctx, savedImages)
+		_ = s.submissions.DeleteByID(ctx, submission.ID)
+		return nil, err
+	}
+
+	submission.Images = storedImages
 	return submission, nil
 }
 

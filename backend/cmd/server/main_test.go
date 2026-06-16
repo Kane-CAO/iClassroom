@@ -18,6 +18,8 @@ func TestHealthEndpoint(t *testing.T) {
 		AppEnv:             "development",
 		ServerPort:         "8080",
 		CORSAllowedOrigins: []string{"http://localhost:5173"},
+		BackendBaseURL:     "http://localhost:8080",
+		UploadDir:          "./uploads",
 	}
 	// db is nil here: the health check must still succeed and report db "down".
 	router := newRouter(cfg, nil)

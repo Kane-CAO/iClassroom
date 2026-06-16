@@ -8,6 +8,7 @@ import (
 
 	"iclassroom/backend/internal/domain"
 	"iclassroom/backend/internal/repository"
+	"iclassroom/backend/internal/storage"
 )
 
 type contractRoomRepo struct {
@@ -114,6 +115,7 @@ type contractSubmissionRepo struct {
 	graded           map[int64]*domain.Submission
 	groups           map[int64]*domain.Group
 	leaderboard      []repository.LeaderboardItem
+	imagesBySubmission map[int64][]domain.SubmissionImage
 }
 
 func (r *contractSubmissionRepo) ListTasksForStudent(ctx context.Context, studentID, roomID, groupID int64) ([]repository.StudentTaskWithSubmission, error) {
@@ -143,7 +145,36 @@ func (r *contractSubmissionRepo) CreateText(ctx context.Context, taskID int64, s
 		SubmittedAt: time.Now().UTC(),
 	}
 	r.created[sub.ID] = sub
+	if r.imagesBySubmission == nil {
+		r.imagesBySubmission = map[int64][]domain.SubmissionImage{}
+	}
 	return sub, nil
+}
+
+func (r *contractSubmissionRepo) CreateImages(ctx context.Context, submissionID int64, images []domain.SubmissionImage) ([]domain.SubmissionImage, error) {
+	if r.imagesBySubmission == nil {
+		r.imagesBySubmission = map[int64][]domain.SubmissionImage{}
+	}
+	out := make([]domain.SubmissionImage, len(images))
+	for i := range images {
+		img := images[i]
+		img.ID = int64(i + 1)
+		img.SubmissionID = submissionID
+		out[i] = img
+	}
+	r.imagesBySubmission[submissionID] = append([]domain.SubmissionImage(nil), out...)
+	if sub, ok := r.created[submissionID]; ok {
+		sub.Images = append([]domain.SubmissionImage(nil), out...)
+	}
+	return out, nil
+}
+
+func (r *contractSubmissionRepo) DeleteByID(ctx context.Context, submissionID int64) error {
+	delete(r.created, submissionID)
+	delete(r.graded, submissionID)
+	delete(r.roomBySubmission, submissionID)
+	delete(r.imagesBySubmission, submissionID)
+	return nil
 }
 
 func (r *contractSubmissionRepo) ListByTaskID(ctx context.Context, taskID int64) ([]repository.SubmissionWithStudent, error) {
@@ -299,6 +330,29 @@ func TestTaskContract_TextSubmissionDuplicatePauseAndClose(t *testing.T) {
 	tasks.tasks[1].Status = domain.TaskStatusClosed
 	if _, err := svc.SubmitText(context.Background(), 1, "student_1", "closed"); err == nil {
 		t.Fatal("expected closed task submission error")
+	}
+}
+
+func TestTaskContract_SubmitWithImages(t *testing.T) {
+	svc, _, _, _, _, submissions := newContractTaskService()
+	uploader := NewLocalUploadService(storage.NewLocalStorage(t.TempDir(), "http://localhost:8080"))
+	svc = NewTaskService(svc.rooms, svc.groups, svc.students, svc.tasks, svc.submissions, uploader)
+
+	res, err := svc.SubmitWithImages(context.Background(), 1, "student_1", "with images", []UploadedFile{
+		{MimeType: "image/jpeg", Data: []byte("jpeg-data")},
+		{MimeType: "image/png", Data: []byte("png-data")},
+	})
+	if err != nil {
+		t.Fatalf("SubmitWithImages returned error: %v", err)
+	}
+	if len(res.Images) != 2 {
+		t.Fatalf("expected 2 images, got %d", len(res.Images))
+	}
+	if len(submissions.imagesBySubmission[res.ID]) != 2 {
+		t.Fatalf("expected stored images, got %d", len(submissions.imagesBySubmission[res.ID]))
+	}
+	if submissions.created[res.ID] == nil || len(submissions.created[res.ID].Images) != 2 {
+		t.Fatalf("expected submission to carry images")
 	}
 }
 

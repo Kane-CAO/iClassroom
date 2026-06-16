@@ -15,6 +15,7 @@ import (
 	"iclassroom/backend/internal/repository"
 	"iclassroom/backend/internal/response"
 	"iclassroom/backend/internal/service"
+	"iclassroom/backend/internal/storage"
 )
 
 func main() {
@@ -51,6 +52,7 @@ func newRouter(cfg *config.Config, db *sql.DB) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 	router.Use(middleware.CORS(cfg.CORSAllowedOrigins))
+	router.Static("/uploads", cfg.UploadDir)
 
 	router.GET("/health", healthHandler(cfg, db))
 
@@ -67,10 +69,12 @@ func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	studentRepo := repository.NewStudentRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
 	submissionRepo := repository.NewSubmissionRepository(db)
+	uploadStore := storage.NewLocalStorage(cfg.UploadDir, cfg.BackendBaseURL)
+	uploadSvc := service.NewLocalUploadService(uploadStore)
 
 	roomSvc := service.NewRoomService(roomRepo, groupRepo, cfg.FrontendBaseURL)
 	studentSvc := service.NewStudentService(roomRepo, groupRepo, studentRepo)
-	taskSvc := service.NewTaskService(roomRepo, groupRepo, studentRepo, taskRepo, submissionRepo)
+	taskSvc := service.NewTaskService(roomRepo, groupRepo, studentRepo, taskRepo, submissionRepo, uploadSvc)
 
 	api := router.Group("/api")
 	handler.NewRoomHandler(roomSvc).Register(api)

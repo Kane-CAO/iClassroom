@@ -2,6 +2,9 @@ package handler
 
 import (
 	"context"
+	"io"
+	"mime/multipart"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -131,27 +134,60 @@ func (h *TaskHandler) Submit(c *gin.Context) {
 		return
 	}
 
-	var req submitTaskRequest
 	contentType := c.GetHeader("Content-Type")
+	token := c.GetHeader(headerStudentToken)
 
 	switch {
 	case strings.HasPrefix(contentType, "multipart/form-data"),
 		strings.HasPrefix(contentType, "application/x-www-form-urlencoded"):
-		req.ContentText = c.PostForm("contentText")
+		contentText := c.PostForm("contentText")
+		if strings.HasPrefix(contentType, "multipart/form-data") {
+			form, err := c.MultipartForm()
+			if err != nil {
+				respondError(c, apperr.InvalidRequest("malformed multipart form"))
+				return
+			}
+
+			uploads, err := readUploadedImages(form)
+			if err != nil {
+				respondError(c, err)
+				return
+			}
+
+			submission, err := h.tasks.SubmitWithImages(c.Request.Context(), taskID, token, contentText, uploads)
+			if err != nil {
+				respondError(c, err)
+				return
+			}
+
+			response.Success(c, submissionJSON(submission))
+			return
+		}
+
+		submission, err := h.tasks.SubmitText(c.Request.Context(), taskID, token, contentText)
+		if err != nil {
+			respondError(c, err)
+			return
+		}
+
+		response.Success(c, submissionJSON(submission))
+		return
 	default:
+		var req submitTaskRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			respondError(c, apperr.InvalidRequest("malformed request body"))
 			return
 		}
-	}
 
-	submission, err := h.tasks.SubmitText(c.Request.Context(), taskID, c.GetHeader(headerStudentToken), req.ContentText)
-	if err != nil {
-		respondError(c, err)
+		submission, err := h.tasks.SubmitText(c.Request.Context(), taskID, token, req.ContentText)
+		if err != nil {
+			respondError(c, err)
+			return
+		}
+
+		response.Success(c, submissionJSON(submission))
 		return
 	}
-
-	response.Success(c, submissionJSON(submission))
 }
 
 func (h *TaskHandler) GradeSubmission(c *gin.Context) {
@@ -413,6 +449,37 @@ func rankingJSON(view *service.LeaderboardView) []gin.H {
 		})
 	}
 	return entries
+}
+
+func readUploadedImages(form *multipart.Form) ([]service.UploadedFile, error) {
+	files := form.File["images[]"]
+	if len(files) == 0 {
+		return nil, nil
+	}
+	if len(files) > 3 {
+		return nil, apperr.TooManyImages()
+	}
+
+	uploads := make([]service.UploadedFile, 0, len(files))
+	for _, header := range files {
+		f, err := header.Open()
+		if err != nil {
+			return nil, apperr.UploadFailed()
+		}
+		data, err := io.ReadAll(f)
+		_ = f.Close()
+		if err != nil {
+			return nil, apperr.UploadFailed()
+		}
+
+		uploads = append(uploads, service.UploadedFile{
+			FileName: header.Filename,
+			MimeType: http.DetectContentType(data),
+			Data:     data,
+		})
+	}
+
+	return uploads, nil
 }
 
 func leaderboardJSON(view *service.LeaderboardView) gin.H {
