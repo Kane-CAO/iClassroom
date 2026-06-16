@@ -54,14 +54,14 @@ func (h *RoomHub) Count() int {
 	return len(h.clients)
 }
 
-// Broadcast marshals the event once and enqueues it for every client. A failure
-// to marshal is logged and swallowed; per-client delivery is non-blocking, so
-// one stuck client never blocks the room and nothing here can panic.
-func (h *RoomHub) Broadcast(evt Event) {
+// Broadcast marshals the event once and enqueues it for every client. A marshal
+// failure is logged and returned; per-client delivery is non-blocking, so one
+// stuck client never blocks the room and nothing here can panic.
+func (h *RoomHub) Broadcast(evt Event) error {
 	payload, err := json.Marshal(evt)
 	if err != nil {
 		log.Printf("websocket: marshal event %q for room %s failed: %v", evt.Type, h.roomCode, err)
-		return
+		return err
 	}
 
 	// Snapshot the client set under a read lock, then release it before
@@ -76,4 +76,5 @@ func (h *RoomHub) Broadcast(evt Event) {
 	for _, c := range targets {
 		c.enqueue(payload)
 	}
+	return nil
 }

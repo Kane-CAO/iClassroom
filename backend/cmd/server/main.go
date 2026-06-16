@@ -76,19 +76,21 @@ func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	uploadStore := storage.NewLocalStorage(cfg.UploadDir, cfg.BackendBaseURL)
 	uploadSvc := service.NewLocalUploadService(uploadStore)
 
-	roomSvc := service.NewRoomService(roomRepo, groupRepo, cfg.FrontendBaseURL)
-	studentSvc := service.NewStudentService(roomRepo, groupRepo, studentRepo)
-	taskSvc := service.NewTaskService(roomRepo, groupRepo, studentRepo, taskRepo, submissionRepo, uploadSvc)
-	featuredSvc := service.NewFeaturedAnswerService(roomRepo, featuredRepo)
-	displaySvc := service.NewDisplayService(roomRepo, submissionRepo, displayRepo)
-	analyticsSvc := service.NewAnalyticsService(roomRepo, analyticsRepo)
-	exportSvc := service.NewExportService(roomRepo, taskRepo, submissionRepo)
-
 	// Real-time channel. The hub manager is the single broadcast point shared
-	// across the app; the /ws endpoint is mounted at the root, not under /api.
+	// across the app; the /ws endpoint is mounted at the root, not under /api,
+	// and the broadcasting services receive it so they can publish events after
+	// their database writes commit.
 	wsManager := websocket.NewHubManager()
 	wsAuthSvc := service.NewWSAuthService(roomRepo, studentRepo)
 	handler.NewWSHandler(wsAuthSvc, wsManager).Register(router)
+
+	roomSvc := service.NewRoomService(roomRepo, groupRepo, cfg.FrontendBaseURL, wsManager)
+	studentSvc := service.NewStudentService(roomRepo, groupRepo, studentRepo, wsManager)
+	taskSvc := service.NewTaskService(roomRepo, groupRepo, studentRepo, taskRepo, submissionRepo, wsManager, uploadSvc)
+	featuredSvc := service.NewFeaturedAnswerService(roomRepo, featuredRepo, wsManager)
+	displaySvc := service.NewDisplayService(roomRepo, submissionRepo, displayRepo)
+	analyticsSvc := service.NewAnalyticsService(roomRepo, analyticsRepo)
+	exportSvc := service.NewExportService(roomRepo, taskRepo, submissionRepo)
 
 	api := router.Group("/api")
 	handler.NewRoomHandler(roomSvc).Register(api)

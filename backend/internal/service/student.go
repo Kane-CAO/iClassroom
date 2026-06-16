@@ -8,6 +8,7 @@ import (
 	"iclassroom/backend/internal/apperr"
 	"iclassroom/backend/internal/domain"
 	"iclassroom/backend/internal/repository"
+	"iclassroom/backend/internal/websocket"
 )
 
 const maxNicknameLen = 64
@@ -15,14 +16,21 @@ const maxNicknameLen = 64
 // StudentService implements the student entry rules: viewing a room, joining,
 // and resuming a session by token.
 type StudentService struct {
-	rooms    RoomRepository
-	groups   GroupRepository
-	students StudentRepository
+	rooms       RoomRepository
+	groups      GroupRepository
+	students    StudentRepository
+	broadcaster EventBroadcaster
 }
 
-// NewStudentService constructs a StudentService.
-func NewStudentService(rooms RoomRepository, groups GroupRepository, students StudentRepository) *StudentService {
-	return &StudentService{rooms: rooms, groups: groups, students: students}
+// NewStudentService constructs a StudentService. A nil broadcaster falls back to
+// a noop, so real-time events are simply dropped when no hub is wired.
+func NewStudentService(rooms RoomRepository, groups GroupRepository, students StudentRepository, broadcaster EventBroadcaster) *StudentService {
+	return &StudentService{
+		rooms:       rooms,
+		groups:      groups,
+		students:    students,
+		broadcaster: resolveBroadcaster(broadcaster),
+	}
 }
 
 // StudentRoomView is the public room view shown before a student joins.
@@ -92,6 +100,15 @@ func (s *StudentService) Join(ctx context.Context, roomCode, nickname string, gr
 	if err != nil {
 		return nil, err
 	}
+
+	// DB write committed: announce the new participant. Failure here must not
+	// affect the join result (see emit).
+	emit(s.broadcaster, room.RoomCode, websocket.EventStudentJoined, map[string]any{
+		"studentId": student.ID,
+		"nickname":  student.Nickname,
+		"groupId":   student.GroupID,
+	})
+
 	return &JoinResult{Student: student, RoomCode: room.RoomCode, GroupName: group.GroupName}, nil
 }
 

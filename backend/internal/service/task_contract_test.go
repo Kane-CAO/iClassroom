@@ -285,7 +285,7 @@ func newContractTaskService() (*TaskService, *contractRoomRepo, *contractGroupRe
 		},
 	}
 
-	return NewTaskService(rooms, groups, students, tasks, submissions), rooms, groups, students, tasks, submissions
+	return NewTaskService(rooms, groups, students, tasks, submissions, nil), rooms, groups, students, tasks, submissions
 }
 
 func TestTaskContract_CreateTaskValidation(t *testing.T) {
@@ -353,7 +353,7 @@ func TestTaskContract_TextSubmissionDuplicatePauseAndClose(t *testing.T) {
 func TestTaskContract_SubmitWithImages(t *testing.T) {
 	svc, _, _, _, _, submissions := newContractTaskService()
 	uploader := NewLocalUploadService(storage.NewLocalStorage(t.TempDir(), "http://localhost:8080"))
-	svc = NewTaskService(svc.rooms, svc.groups, svc.students, svc.tasks, svc.submissions, uploader)
+	svc = NewTaskService(svc.rooms, svc.groups, svc.students, svc.tasks, svc.submissions, nil, uploader)
 
 	res, err := svc.SubmitWithImages(context.Background(), 1, "student_1", "with images", []UploadedFile{
 		{MimeType: "image/jpeg", Data: []byte("jpeg-data")},

@@ -138,8 +138,8 @@ func (m *memStore) count(groupID int64) int {
 func testRouter(m *memStore) *gin.Engine {
 	r := gin.New()
 	api := r.Group("/api")
-	NewRoomHandler(service.NewRoomService(m, m, "http://localhost:5173")).Register(api)
-	NewStudentHandler(service.NewStudentService(m, m, m)).Register(api)
+	NewRoomHandler(service.NewRoomService(m, m, "http://localhost:5173", nil)).Register(api)
+	NewStudentHandler(service.NewStudentService(m, m, m, nil)).Register(api)
 	return r
 }
 

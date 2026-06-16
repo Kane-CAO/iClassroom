@@ -150,25 +150,25 @@ func TestFeaturedAnswerService(t *testing.T) {
 
 	t.Run("invalid display mode", func(t *testing.T) {
 		store := newPrompt14Store()
-		_, err := NewFeaturedAnswerService(store, store).Feature(ctx, 10, "teacher_ok", domain.DisplayMode("bad"))
+		_, err := NewFeaturedAnswerService(store, store, nil).Feature(ctx, 10, "teacher_ok", domain.DisplayMode("bad"))
 		wantCode(t, err, "INVALID_DISPLAY_MODE")
 	})
 
 	t.Run("missing token", func(t *testing.T) {
 		store := newPrompt14Store()
-		_, err := NewFeaturedAnswerService(store, store).Feature(ctx, 10, "", domain.DisplayAnonymous)
+		_, err := NewFeaturedAnswerService(store, store, nil).Feature(ctx, 10, "", domain.DisplayAnonymous)
 		wantCode(t, err, "INVALID_TEACHER_TOKEN")
 	})
 
 	t.Run("wrong room token", func(t *testing.T) {
 		store := newPrompt14Store()
-		_, err := NewFeaturedAnswerService(store, store).Feature(ctx, 10, "teacher_other", domain.DisplayAnonymous)
+		_, err := NewFeaturedAnswerService(store, store, nil).Feature(ctx, 10, "teacher_other", domain.DisplayAnonymous)
 		wantCode(t, err, "ROOM_ACCESS_DENIED")
 	})
 
 	t.Run("upsert featured answer", func(t *testing.T) {
 		store := newPrompt14Store()
-		fa, err := NewFeaturedAnswerService(store, store).Feature(ctx, 10, "teacher_ok", domain.DisplayShowGroup)
+		fa, err := NewFeaturedAnswerService(store, store, nil).Feature(ctx, 10, "teacher_ok", domain.DisplayShowGroup)
 		if err != nil {
 			t.Fatalf("Feature error: %v", err)
 		}

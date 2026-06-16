@@ -52,16 +52,17 @@ func (m *HubManager) unregister(c *Client) {
 }
 
 // Broadcast delivers an event to every client in the named room. It is the only
-// method business services call. Unknown or empty rooms are silently ignored so
-// services never need to know whether anyone is currently connected.
-func (m *HubManager) Broadcast(roomCode string, evt Event) {
+// method business services call. Unknown or empty rooms are silently ignored
+// (returns nil) so services never need to know whether anyone is connected. The
+// only non-nil error is a marshal failure of the event payload.
+func (m *HubManager) Broadcast(roomCode string, evt Event) error {
 	m.mu.Lock()
 	h, ok := m.hubs[roomCode]
 	m.mu.Unlock()
 	if !ok {
-		return
+		return nil
 	}
-	h.Broadcast(evt)
+	return h.Broadcast(evt)
 }
 
 // RoomCount returns the number of rooms with at least one connected client.
