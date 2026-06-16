@@ -36,6 +36,18 @@ func (r *contractRoomRepo) GetByTeacherToken(ctx context.Context, token string) 
 	return room, nil
 }
 
+func (r *contractRoomRepo) EndRoom(ctx context.Context, roomID int64, endedAt time.Time) error {
+	for _, room := range r.byCode {
+		if room.ID == roomID {
+			room.Status = domain.RoomStatusEnded
+			t := endedAt.UTC()
+			room.EndedAt = &t
+			return nil
+		}
+	}
+	return repository.ErrNotFound
+}
+
 type contractGroupRepo struct {
 	byID map[int64]*domain.Group
 }
@@ -107,14 +119,14 @@ func (r *contractTaskRepo) UpdateStatus(ctx context.Context, taskID int64, statu
 }
 
 type contractSubmissionRepo struct {
-	studentTasks     []repository.StudentTaskWithSubmission
-	targetedTasks    map[int64]*domain.Task
-	created          map[int64]*domain.Submission
-	duplicateCreate  bool
-	roomBySubmission map[int64]*domain.Room
-	graded           map[int64]*domain.Submission
-	groups           map[int64]*domain.Group
-	leaderboard      []repository.LeaderboardItem
+	studentTasks       []repository.StudentTaskWithSubmission
+	targetedTasks      map[int64]*domain.Task
+	created            map[int64]*domain.Submission
+	duplicateCreate    bool
+	roomBySubmission   map[int64]*domain.Room
+	graded             map[int64]*domain.Submission
+	groups             map[int64]*domain.Group
+	leaderboard        []repository.LeaderboardItem
 	imagesBySubmission map[int64][]domain.SubmissionImage
 }
 
@@ -307,7 +319,7 @@ func TestTaskContract_CreateTaskValidation(t *testing.T) {
 }
 
 func TestTaskContract_TextSubmissionDuplicatePauseAndClose(t *testing.T) {
-	svc, _, _, _, tasks, submissions := newContractTaskService()
+	svc, rooms, _, _, tasks, submissions := newContractTaskService()
 
 	if _, err := svc.SubmitText(context.Background(), 1, "student_1", "my answer"); err != nil {
 		t.Fatalf("SubmitText returned error: %v", err)
@@ -330,6 +342,11 @@ func TestTaskContract_TextSubmissionDuplicatePauseAndClose(t *testing.T) {
 	tasks.tasks[1].Status = domain.TaskStatusClosed
 	if _, err := svc.SubmitText(context.Background(), 1, "student_1", "closed"); err == nil {
 		t.Fatal("expected closed task submission error")
+	}
+
+	rooms.byCode["ABC123"].Status = domain.RoomStatusEnded
+	if _, err := svc.SubmitText(context.Background(), 1, "student_1", "room ended"); err == nil {
+		t.Fatal("expected ended room submission error")
 	}
 }
 

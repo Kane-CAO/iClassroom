@@ -42,6 +42,10 @@ func RoomEnded() *Error {
 	return New(http.StatusConflict, "ROOM_ENDED", "classroom has ended")
 }
 
+func RoomAlreadyEnded() *Error {
+	return New(http.StatusConflict, "ROOM_ALREADY_ENDED", "classroom has already ended")
+}
+
 func RoomAccessDenied() *Error {
 	return New(http.StatusForbidden, "ROOM_ACCESS_DENIED", "token is not authorized for this room")
 }
@@ -140,6 +144,14 @@ func UploadFailed() *Error {
 
 func InvalidDisplayMode() *Error {
 	return New(http.StatusBadRequest, "INVALID_DISPLAY_MODE", "displayMode must be anonymous or showGroup")
+}
+
+func ExportFailed() *Error {
+	return New(http.StatusInternalServerError, "EXPORT_FAILED", "failed to export room data")
+}
+
+func ImageFileMissing() *Error {
+	return New(http.StatusInternalServerError, "IMAGE_FILE_MISSING", "export image file is missing")
 }
 
 // InvalidRequest is used for malformed request bodies / unbindable input.

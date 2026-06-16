@@ -159,3 +159,49 @@ func TestGetOverview_Counts(t *testing.T) {
 		t.Errorf("groups = %d, want 3", len(ov.Groups))
 	}
 }
+
+func TestEndRoom_Success(t *testing.T) {
+	f := newFakeStore()
+	created := seedRoom(t, f)
+	res, err := newRoomSvc(f).EndRoom(context.Background(), created.Room.RoomCode, created.Room.TeacherToken)
+	if err != nil {
+		t.Fatalf("EndRoom error: %v", err)
+	}
+	if res.Status != domain.RoomStatusEnded || res.EndedAt == nil {
+		t.Fatalf("ended room = %+v", res)
+	}
+	if got := f.rooms[created.Room.RoomCode].Status; got != domain.RoomStatusEnded {
+		t.Fatalf("store status = %s, want ended", got)
+	}
+}
+
+func TestEndRoom_Errors(t *testing.T) {
+	f := newFakeStore()
+	created := seedRoom(t, f)
+	svc := newRoomSvc(f)
+
+	t.Run("missing token", func(t *testing.T) {
+		_, err := svc.EndRoom(context.Background(), created.Room.RoomCode, "")
+		wantCode(t, err, "INVALID_TEACHER_TOKEN")
+	})
+
+	t.Run("wrong token", func(t *testing.T) {
+		other := seedRoom(t, f)
+		_, err := svc.EndRoom(context.Background(), created.Room.RoomCode, other.Room.TeacherToken)
+		wantCode(t, err, "ROOM_ACCESS_DENIED")
+	})
+
+	t.Run("room not found", func(t *testing.T) {
+		_, err := svc.EndRoom(context.Background(), "NOPE12", created.Room.TeacherToken)
+		wantCode(t, err, "ROOM_NOT_FOUND")
+	})
+
+	t.Run("already ended", func(t *testing.T) {
+		_, err := svc.EndRoom(context.Background(), created.Room.RoomCode, created.Room.TeacherToken)
+		if err != nil {
+			t.Fatalf("first end: %v", err)
+		}
+		_, err = svc.EndRoom(context.Background(), created.Room.RoomCode, created.Room.TeacherToken)
+		wantCode(t, err, "ROOM_ALREADY_ENDED")
+	})
+}

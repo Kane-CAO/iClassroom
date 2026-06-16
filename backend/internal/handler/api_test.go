@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -67,6 +68,18 @@ func (m *memStore) GetByTeacherToken(_ context.Context, token string) (*domain.R
 		}
 	}
 	return nil, repository.ErrNotFound
+}
+
+func (m *memStore) EndRoom(_ context.Context, roomID int64, endedAt time.Time) error {
+	for _, r := range m.rooms {
+		if r.ID == roomID {
+			r.Status = domain.RoomStatusEnded
+			t := endedAt.UTC()
+			r.EndedAt = &t
+			return nil
+		}
+	}
+	return repository.ErrNotFound
 }
 
 func (m *memStore) ListByRoomID(_ context.Context, roomID int64) ([]repository.GroupWithCount, error) {
@@ -227,6 +240,30 @@ func TestFullEntryFlow(t *testing.T) {
 	mustData(t, env, &ov)
 	if ov.StudentCount != 1 {
 		t.Errorf("overview studentCount = %d, want 1", ov.StudentCount)
+	}
+}
+
+func TestEndRoomRoute(t *testing.T) {
+	r := testRouter(newMemStore())
+	_, env := do(t, r, http.MethodPost, "/api/teacher/rooms", gin.H{"title": "X", "groupCount": 1, "groupCapacity": 1}, nil)
+	var created struct {
+		RoomCode     string `json:"roomCode"`
+		TeacherToken string `json:"teacherToken"`
+	}
+	mustData(t, env, &created)
+
+	status, env2 := do(t, r, http.MethodPost, "/api/teacher/rooms/"+created.RoomCode+"/end", nil, map[string]string{headerTeacherToken: created.TeacherToken})
+	if status != http.StatusOK || !env2.Success {
+		t.Fatalf("end room: status=%d env=%+v", status, env2)
+	}
+	var ended struct {
+		RoomCode string    `json:"roomCode"`
+		Status   string    `json:"status"`
+		EndedAt  time.Time `json:"endedAt"`
+	}
+	mustData(t, env2, &ended)
+	if ended.Status != "ended" || ended.RoomCode != created.RoomCode || ended.EndedAt.IsZero() {
+		t.Fatalf("unexpected end payload: %+v", ended)
 	}
 }
 

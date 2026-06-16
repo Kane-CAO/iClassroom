@@ -26,6 +26,7 @@ func (h *RoomHandler) Register(rg *gin.RouterGroup) {
 	rg.POST("/teacher/rooms", h.Create)
 	rg.GET("/teacher/rooms/:roomCode", h.Get)
 	rg.GET("/teacher/rooms/:roomCode/overview", h.Overview)
+	rg.POST("/teacher/rooms/:roomCode/end", h.End)
 }
 
 type createRoomRequest struct {
@@ -132,5 +133,23 @@ func (h *RoomHandler) Overview(c *gin.Context) {
 		"studentCount": ov.StudentCount,
 		"groups":       groups,
 		"tasks":        []any{}, // populated in a later step
+	})
+}
+
+// End handles POST /api/teacher/rooms/:roomCode/end.
+func (h *RoomHandler) End(c *gin.Context) {
+	roomCode := c.Param("roomCode")
+	token := c.GetHeader(headerTeacherToken)
+
+	room, err := h.rooms.EndRoom(c.Request.Context(), roomCode, token)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{
+		"roomCode": room.RoomCode,
+		"status":   room.Status,
+		"endedAt":  room.EndedAt,
 	})
 }

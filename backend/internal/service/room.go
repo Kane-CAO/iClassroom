@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"iclassroom/backend/internal/apperr"
 	"iclassroom/backend/internal/domain"
@@ -155,6 +156,28 @@ func (s *RoomService) GetOverview(ctx context.Context, roomCode, teacherToken st
 		StudentCount: studentCount,
 		JoinURL:      s.joinURL(room.RoomCode),
 	}, nil
+}
+
+// EndRoom transitions a room to ended and stamps endedAt.
+func (s *RoomService) EndRoom(ctx context.Context, roomCode, teacherToken string) (*domain.Room, error) {
+	room, err := s.verifyTeacher(ctx, roomCode, teacherToken)
+	if err != nil {
+		return nil, err
+	}
+	if room.Status == domain.RoomStatusEnded {
+		return nil, apperr.RoomAlreadyEnded()
+	}
+
+	endedAt := time.Now().UTC()
+	if err := s.rooms.EndRoom(ctx, room.ID, endedAt); errors.Is(err, repository.ErrNotFound) {
+		return nil, apperr.RoomNotFound()
+	} else if err != nil {
+		return nil, err
+	}
+
+	room.Status = domain.RoomStatusEnded
+	room.EndedAt = &endedAt
+	return room, nil
 }
 
 func (s *RoomService) joinURL(code string) string {

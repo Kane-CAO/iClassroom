@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"iclassroom/backend/internal/domain"
 	"iclassroom/backend/internal/repository"
@@ -12,8 +13,8 @@ import (
 // unique room_id+nickname, group capacity) so the service rules can be tested
 // without a database. It is not concurrency-safe; tests are single-goroutine.
 type fakeStore struct {
-	rooms    map[string]*domain.Room  // keyed by roomCode
-	groups   map[int64]*domain.Group  // keyed by groupId
+	rooms    map[string]*domain.Room    // keyed by roomCode
+	groups   map[int64]*domain.Group    // keyed by groupId
 	students map[string]*domain.Student // keyed by clientToken
 
 	nextID int64
@@ -79,6 +80,18 @@ func (f *fakeStore) GetByTeacherToken(_ context.Context, token string) (*domain.
 		}
 	}
 	return nil, repository.ErrNotFound
+}
+
+func (f *fakeStore) EndRoom(_ context.Context, roomID int64, endedAt time.Time) error {
+	for _, r := range f.rooms {
+		if r.ID == roomID {
+			r.Status = domain.RoomStatusEnded
+			t := endedAt.UTC()
+			r.EndedAt = &t
+			return nil
+		}
+	}
+	return repository.ErrNotFound
 }
 
 // --- GroupRepository ---

@@ -61,6 +61,18 @@ func (s *prompt14Store) GetByTeacherToken(_ context.Context, token string) (*dom
 	return nil, repository.ErrNotFound
 }
 
+func (s *prompt14Store) EndRoom(_ context.Context, roomID int64, endedAt time.Time) error {
+	for _, room := range s.roomsByCode {
+		if room.ID == roomID {
+			room.Status = domain.RoomStatusEnded
+			t := endedAt.UTC()
+			room.EndedAt = &t
+			return nil
+		}
+	}
+	return repository.ErrNotFound
+}
+
 func (s *prompt14Store) GetRoomBySubmissionID(_ context.Context, submissionID int64) (*domain.Room, error) {
 	if room, ok := s.submissionRooms[submissionID]; ok {
 		return room, nil

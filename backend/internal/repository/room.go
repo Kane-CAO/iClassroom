@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"iclassroom/backend/internal/domain"
 )
@@ -131,4 +132,21 @@ func (r *RoomRepository) GetByTeacherToken(ctx context.Context, token string) (*
 		return nil, fmt.Errorf("repository: get room by teacher token: %w", err)
 	}
 	return room, nil
+}
+
+// EndRoom marks a room as ended and records the end timestamp.
+func (r *RoomRepository) EndRoom(ctx context.Context, roomID int64, endedAt time.Time) error {
+	const q = `UPDATE rooms SET status = ?, ended_at = ?, updated_at = ? WHERE id = ?`
+	res, err := r.db.ExecContext(ctx, q, domain.RoomStatusEnded, endedAt.UTC(), endedAt.UTC(), roomID)
+	if err != nil {
+		return fmt.Errorf("repository: end room: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("repository: end room rows affected: %w", err)
+	}
+	if affected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
