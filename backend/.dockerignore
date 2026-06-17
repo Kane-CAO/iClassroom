@@ -1,0 +1,10 @@
+.env
+.env.*
+bin/
+coverage.*
+*.cover
+*.out
+*.test
+*.log
+uploads/*
+!uploads/.gitkeep
