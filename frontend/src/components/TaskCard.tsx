@@ -72,7 +72,7 @@ export default function TaskCard({
             {submitted && (
               <span className="inline-flex items-center gap-1.5">
                 <Inbox className="h-4 w-4" />
-                {submitted} submitted
+                已提交 {submitted}
               </span>
             )}
           </div>

@@ -39,20 +39,20 @@ export default function TeacherHeader({ roomCode, active = 'courses' }: TeacherH
             className={tabClass('courses')}
             onClick={() => navigate(`/teacher/rooms/${roomCode}/dashboard`)}
           >
-            Courses
+            课堂
           </button>
           <button
             className={tabClass('assignments')}
             onClick={() => navigate(`/teacher/rooms/${roomCode}/course`)}
           >
-            Assignments
+            任务
           </button>
         </nav>
 
         <div className="flex items-center gap-3">
           <button
             className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-            aria-label="Notifications"
+            aria-label="通知"
           >
             <Bell className="h-4 w-4" />
             <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />

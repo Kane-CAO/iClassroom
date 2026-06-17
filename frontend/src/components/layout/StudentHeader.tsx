@@ -30,14 +30,14 @@ export default function StudentHeader({ roomCode, connected = true, student }: S
           </div>
           <div>
             <p className="text-sm font-semibold leading-4">iClassroom</p>
-            <p className="text-xs text-muted dark:text-slate-400">QR invitation · Room {roomCode}</p>
+            <p className="text-xs text-muted dark:text-slate-400">课堂邀请 · 房间 {roomCode}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {connected && (
             <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-              Connected
+              已连接
             </span>
           )}
           <DarkToggle />

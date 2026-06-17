@@ -1,4 +1,4 @@
-const wsBaseURL = import.meta.env.VITE_WS_BASE_URL ?? ''
+const wsBaseURL = import.meta.env.VITE_WS_BASE_URL ?? '/ws'
 
 export type RoomWebSocketRole = 'teacher' | 'student' | 'display'
 

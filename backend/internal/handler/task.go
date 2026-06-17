@@ -32,6 +32,7 @@ func (h *TaskHandler) Register(rg *gin.RouterGroup) {
 	rg.PATCH("/teacher/tasks/:taskId/close", h.Close)
 
 	rg.GET("/student/me/tasks", h.ListForStudent)
+	rg.GET("/student/tasks/:taskId", h.GetForStudent)
 	rg.POST("/student/tasks/:taskId/submit", h.Submit)
 	rg.GET("/teacher/tasks/:taskId/submissions", h.ListSubmissions)
 
@@ -125,6 +126,22 @@ func (h *TaskHandler) ListForStudent(c *gin.Context) {
 	}
 
 	response.Success(c, out)
+}
+
+func (h *TaskHandler) GetForStudent(c *gin.Context) {
+	taskID, err := strconv.ParseInt(c.Param("taskId"), 10, 64)
+	if err != nil || taskID <= 0 {
+		respondError(c, apperr.TaskNotFound())
+		return
+	}
+
+	task, err := h.tasks.GetForStudent(c.Request.Context(), taskID, c.GetHeader(headerStudentToken))
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	response.Success(c, studentTaskViewJSON(task))
 }
 
 func (h *TaskHandler) Submit(c *gin.Context) {

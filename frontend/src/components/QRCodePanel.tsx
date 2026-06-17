@@ -34,8 +34,8 @@ function patternFor(seed: string): boolean[] {
 export default function QRCodePanel({
   roomCode,
   joinUrl,
-  title = 'Scan to Join',
-  subtitle = 'No account required',
+  title = '扫码加入',
+  subtitle = '无需账号',
 }: QRCodePanelProps) {
   const cells = patternFor(`${roomCode}|${joinUrl}`)
 
@@ -50,7 +50,7 @@ export default function QRCodePanel({
         <div
           className="grid gap-px"
           style={{ gridTemplateColumns: `repeat(${GRID}, 1fr)`, width: 168, height: 168 }}
-          aria-label={`Join QR placeholder for room ${roomCode}`}
+          aria-label={`房间 ${roomCode} 的加入二维码占位图`}
         >
           {cells.map((on, i) => (
             <span
@@ -62,7 +62,7 @@ export default function QRCodePanel({
       </div>
 
       <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted dark:text-slate-400">
-        Room Code
+        房间码
       </p>
       <p className="mt-1 font-mono text-2xl font-bold tracking-widest text-brand-700 dark:text-brand-100">
         {roomCode}

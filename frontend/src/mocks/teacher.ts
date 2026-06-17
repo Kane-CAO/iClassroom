@@ -10,70 +10,70 @@ import type {
 
 /** 当前登录讲师（原型右上角头像）。 */
 export const teacherProfile = {
-  name: 'Evelyn Chen',
-  initials: 'EC',
-  role: 'Teacher',
+  name: '陈老师',
+  initials: '陈',
+  role: '授课老师',
 }
 
 export const courses: CourseVM[] = [
   {
     id: 'industrial',
-    title: 'Industrial Design Studio',
+    title: '工业设计工作坊',
     code: 'IDS-402',
     students: 24,
     assignments: 6,
-    last: 'Today, 10:32',
+    last: '今天 10:32',
     cover:
       'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=900&q=80',
-    summary: 'Prototype critique, material studies, and studio submissions.',
+    summary: '原型评审、材料研究与课堂提交。',
   },
   {
     id: 'visual',
-    title: 'Visual Communication',
+    title: '视觉传达',
     code: 'VC-218',
     students: 31,
     assignments: 8,
-    last: 'Yesterday, 16:45',
+    last: '昨天 16:45',
     cover:
       'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80',
-    summary: 'Campaign systems, layouts, and design process files.',
+    summary: '传播系统、版式设计与过程文件。',
   },
   {
     id: 'ux',
-    title: 'UX Research Methods',
+    title: '用户研究方法',
     code: 'UXR-310',
     students: 28,
     assignments: 5,
-    last: 'Mon, 09:12',
+    last: '周一 09:12',
     cover:
       'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80',
-    summary: 'Interview plans, synthesis boards, and written findings.',
+    summary: '访谈计划、综合分析板与研究结论。',
   },
 ]
 
 export const assignments: AssignmentVM[] = [
-  { id: 'persona', title: 'Persona Research Pack', due: 'Jun 18, 2026 17:00', count: '19 / 24', status: 'Active', course: 'industrial' },
-  { id: 'joint', title: 'Material Joint Prototype', due: 'Jun 21, 2026 14:00', count: '7 / 24', status: 'Active', course: 'industrial' },
-  { id: 'ergo', title: 'Ergonomic Observation Notes', due: 'Jun 12, 2026 18:00', count: '24 / 24', status: 'Closed', course: 'industrial' },
-  { id: 'memo', title: 'Research Memo Draft', due: 'Jun 24, 2026 12:00', count: '0 / 24', status: 'Draft', course: 'industrial' },
+  { id: 'persona', title: '用户画像研究包', due: '2026-06-18 17:00', count: '19 / 24', status: 'Active', course: 'industrial' },
+  { id: 'joint', title: '材料连接原型', due: '2026-06-21 14:00', count: '7 / 24', status: 'Active', course: 'industrial' },
+  { id: 'ergo', title: '人机观察笔记', due: '2026-06-12 18:00', count: '24 / 24', status: 'Closed', course: 'industrial' },
+  { id: 'memo', title: '研究备忘录草稿', due: '2026-06-24 12:00', count: '0 / 24', status: 'Draft', course: 'industrial' },
 ]
 
 export const announcements: AnnouncementVM[] = [
-  { id: 'a1', title: 'Studio critique room changed', body: 'Industrial Design Studio meets in B214 on Friday.' },
-  { id: 'a2', title: 'Review PDFs available', body: 'Published feedback is now downloadable for Assignment 2.' },
-  { id: 'a3', title: 'Office hours posted', body: 'Wednesday 14:00-16:00 for UX Research Methods.' },
+  { id: 'a1', title: '评审教室已调整', body: '工业设计工作坊周五改在 B214 上课。' },
+  { id: 'a2', title: '批改反馈可查看', body: '第二个任务的反馈已经发布，可在学生端查看。' },
+  { id: 'a3', title: '答疑时间已公布', body: '用户研究方法课程答疑时间为周三 14:00-16:00。' },
 ]
 
 /** Review Summary 进度条（原型固定百分比）。 */
 export const reviewSummary: ProgressStatVM[] = [
-  { label: 'Submitted', value: 19, total: 24, tone: 'brand' },
-  { label: 'Reviewed', value: 12, total: 19, tone: 'emerald' },
-  { label: 'Feedback Published', value: 8, total: 19, tone: 'sky' },
+  { label: '已提交', value: 19, total: 24, tone: 'brand' },
+  { label: '已批改', value: 12, total: 19, tone: 'emerald' },
+  { label: '已发布反馈', value: 8, total: 19, tone: 'sky' },
 ]
 
 /** 迷你日历（原型 June 2026，标记的事件日期 / 今天）。 */
 export const calendar = {
-  monthLabel: 'June 2026',
+  monthLabel: '2026 年 6 月',
   daysInMonth: 30,
   startOffset: 1, // 6/1 是周一 → 第一格留空 1 个
   today: 9,

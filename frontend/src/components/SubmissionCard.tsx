@@ -36,9 +36,20 @@ export default function SubmissionCard({ submission, active = false, onClick }: 
           <span className="block text-xs text-muted dark:text-slate-400">{submission.time}</span>
         </span>
         <Badge tone={reviewStatusTone[submission.status]} className="capitalize">
-          {submission.status}
+          {reviewStatusLabel(submission.status)}
         </Badge>
       </div>
     </button>
   )
+}
+
+function reviewStatusLabel(status: ReviewStatus) {
+  switch (status) {
+    case 'reviewed':
+      return '已批改'
+    case 'pending':
+      return '待提交'
+    case 'submitted':
+      return '已提交'
+  }
 }

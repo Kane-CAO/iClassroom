@@ -27,12 +27,12 @@ export default function DarkToggle({ compact = false }: { compact?: boolean }) {
   }
 
   const Icon = dark ? Sun : Moon
-  const label = dark ? 'Light' : 'Dark'
+  const label = dark ? '浅色' : '深色'
 
   return (
     <button
       onClick={toggle}
-      aria-label="Toggle dark mode"
+      aria-label="切换深色模式"
       className="flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
     >
       <Icon className="h-4 w-4" />

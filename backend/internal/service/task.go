@@ -205,6 +205,25 @@ func (s *TaskService) ListForStudent(ctx context.Context, studentToken string) (
 	return out, nil
 }
 
+func (s *TaskService) GetForStudent(ctx context.Context, taskID int64, studentToken string) (*StudentTaskView, error) {
+	if taskID <= 0 {
+		return nil, apperr.TaskNotFound()
+	}
+
+	items, err := s.ListForStudent(ctx, studentToken)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range items {
+		if item.Task.ID == taskID {
+			return &item, nil
+		}
+	}
+
+	return nil, apperr.TaskNotFound()
+}
+
 func (s *TaskService) SubmitText(ctx context.Context, taskID int64, studentToken, contentText string) (*domain.Submission, error) {
 	return s.SubmitWithImages(ctx, taskID, studentToken, contentText, nil)
 }

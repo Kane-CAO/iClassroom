@@ -88,7 +88,7 @@ func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	studentSvc := service.NewStudentService(roomRepo, groupRepo, studentRepo, wsManager)
 	taskSvc := service.NewTaskService(roomRepo, groupRepo, studentRepo, taskRepo, submissionRepo, wsManager, uploadSvc)
 	featuredSvc := service.NewFeaturedAnswerService(roomRepo, featuredRepo, wsManager)
-	displaySvc := service.NewDisplayService(roomRepo, submissionRepo, displayRepo)
+	displaySvc := service.NewDisplayService(roomRepo, groupRepo, submissionRepo, displayRepo)
 	analyticsSvc := service.NewAnalyticsService(roomRepo, analyticsRepo)
 	exportSvc := service.NewExportService(roomRepo, taskRepo, submissionRepo)
 

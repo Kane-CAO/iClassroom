@@ -19,6 +19,7 @@ type prompt14Store struct {
 	leaderboard []repository.LeaderboardItem
 	currentTask *repository.DisplayTask
 	featuredOut []repository.FeaturedAnswerView
+	groups      []repository.GroupWithCount
 
 	studentCount int
 	groupScores  []repository.GroupScore
@@ -76,6 +77,20 @@ func (s *prompt14Store) EndRoom(_ context.Context, roomID int64, endedAt time.Ti
 func (s *prompt14Store) GetRoomBySubmissionID(_ context.Context, submissionID int64) (*domain.Room, error) {
 	if room, ok := s.submissionRooms[submissionID]; ok {
 		return room, nil
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (s *prompt14Store) ListByRoomID(context.Context, int64) ([]repository.GroupWithCount, error) {
+	return s.groups, nil
+}
+
+func (s *prompt14Store) GetByID(_ context.Context, groupID int64) (*domain.Group, error) {
+	for _, group := range s.groups {
+		if group.ID == groupID {
+			g := group.Group
+			return &g, nil
+		}
 	}
 	return nil, repository.ErrNotFound
 }
@@ -180,7 +195,10 @@ func TestFeaturedAnswerService(t *testing.T) {
 
 func TestDisplayServiceEmptyData(t *testing.T) {
 	store := newPrompt14Store()
-	view, err := NewDisplayService(store, store, store).Get(context.Background(), "ABC123", "teacher_ok")
+	store.groups = []repository.GroupWithCount{
+		{Group: domain.Group{ID: 1, GroupName: "Group A", Capacity: 4}, CurrentCount: 0},
+	}
+	view, err := NewDisplayService(store, store, store, store).Get(context.Background(), "ABC123")
 	if err != nil {
 		t.Fatalf("Display Get error: %v", err)
 	}
@@ -190,18 +208,23 @@ func TestDisplayServiceEmptyData(t *testing.T) {
 	if len(view.Ranking) != 0 || len(view.FeaturedAnswers) != 0 {
 		t.Fatalf("expected empty ranking and featured answers: %+v", view)
 	}
+	if len(view.Groups) != 1 {
+		t.Fatalf("expected display groups: %+v", view.Groups)
+	}
 }
 
 func TestDisplayServiceRoomAuth(t *testing.T) {
 	store := newPrompt14Store()
-	_, err := NewDisplayService(store, store, store).Get(context.Background(), "NOPE12", "teacher_ok")
+	_, err := NewDisplayService(store, store, store, store).Get(context.Background(), "NOPE12")
 	wantCode(t, err, "ROOM_NOT_FOUND")
 }
 
-func TestDisplayServiceMissingToken(t *testing.T) {
+func TestDisplayServiceDoesNotRequireTeacherToken(t *testing.T) {
 	store := newPrompt14Store()
-	_, err := NewDisplayService(store, store, store).Get(context.Background(), "ABC123", "")
-	wantCode(t, err, "INVALID_TEACHER_TOKEN")
+	_, err := NewDisplayService(store, store, store, store).Get(context.Background(), "ABC123")
+	if err != nil {
+		t.Fatalf("Display Get without teacher token error: %v", err)
+	}
 }
 
 func TestAnalyticsServiceRates(t *testing.T) {

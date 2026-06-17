@@ -5,18 +5,20 @@ import (
 	"errors"
 	"time"
 
+	"iclassroom/backend/internal/apperr"
 	"iclassroom/backend/internal/domain"
 	"iclassroom/backend/internal/repository"
 )
 
 type DisplayService struct {
 	rooms       RoomRepository
+	groups      GroupRepository
 	submissions SubmissionRepository
 	display     DisplayRepository
 }
 
-func NewDisplayService(rooms RoomRepository, submissions SubmissionRepository, display DisplayRepository) *DisplayService {
-	return &DisplayService{rooms: rooms, submissions: submissions, display: display}
+func NewDisplayService(rooms RoomRepository, groups GroupRepository, submissions SubmissionRepository, display DisplayRepository) *DisplayService {
+	return &DisplayService{rooms: rooms, groups: groups, submissions: submissions, display: display}
 }
 
 type DisplayTaskView struct {
@@ -42,13 +44,22 @@ type DisplayFeaturedAnswerView struct {
 
 type DisplayView struct {
 	Room            *domain.Room
+	Groups          []repository.GroupWithCount
 	Ranking         []LeaderboardEntry
 	CurrentTask     *DisplayTaskView
 	FeaturedAnswers []DisplayFeaturedAnswerView
 }
 
-func (s *DisplayService) Get(ctx context.Context, roomCode, teacherToken string) (*DisplayView, error) {
-	room, err := verifyTeacherByRoomCode(ctx, s.rooms, roomCode, teacherToken)
+func (s *DisplayService) Get(ctx context.Context, roomCode string) (*DisplayView, error) {
+	room, err := s.rooms.GetByRoomCode(ctx, roomCode)
+	switch {
+	case errors.Is(err, repository.ErrNotFound):
+		return nil, apperr.RoomNotFound()
+	case err != nil:
+		return nil, err
+	}
+
+	groups, err := s.groups.ListByRoomID(ctx, room.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +111,7 @@ func (s *DisplayService) Get(ctx context.Context, roomCode, teacherToken string)
 
 	return &DisplayView{
 		Room:            room,
+		Groups:          groups,
 		Ranking:         buildLeaderboard(room.RoomCode, leaderboardItems, 0).Entries,
 		CurrentTask:     currentTask,
 		FeaturedAnswers: featured,

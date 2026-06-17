@@ -3,18 +3,18 @@ import { Link } from 'react-router-dom'
 const ROOM = 'ABC123'
 
 const teacherLinks = [
-  { to: '/teacher/rooms/ABC123/dashboard', label: '房间管理 / My Courses', note: 'iClassroom.html · home' },
-  { to: '/teacher/rooms/ABC123/course', label: '课程详情 / Assignments', note: 'iClassroom.html · course' },
-  { to: '/teacher/create-room', label: '创建作业 / Create Assignment', note: 'iClassroom.html · create' },
-  { to: '/teacher/rooms/ABC123/review', label: '提交批改 / Submission Review', note: 'iClassroom.html · review' },
-  { to: '/teacher/rooms/ABC123/display', label: '大屏看板 / Display', note: '组合页（无原型）' },
-  { to: '/teacher/rooms/ABC123/analytics', label: '数据看板 / Analytics', note: '组合页（无原型）' },
+  { to: '/teacher/rooms/ABC123/dashboard', label: '房间管理', note: '课堂概览' },
+  { to: '/teacher/rooms/ABC123/course', label: '课程详情', note: '任务管理' },
+  { to: '/teacher/create-room', label: '创建课堂', note: '新建房间' },
+  { to: '/teacher/rooms/ABC123/review', label: '提交批改', note: '评分与反馈' },
+  { to: '/teacher/rooms/ABC123/display', label: '大屏看板', note: '课堂展示' },
+  { to: '/teacher/rooms/ABC123/analytics', label: '数据看板', note: '课堂数据' },
 ]
 
 const studentLinks = [
-  { to: '/student', label: '入场 / Join', note: 'student.html · join' },
-  { to: '/student/classroom', label: '课堂首页 / Classroom', note: 'student.html · classroom' },
-  { to: '/student/tasks/q1', label: '答题 / Answer', note: 'student.html · question' },
+  { to: '/student', label: '入场', note: '输入昵称并选组' },
+  { to: '/student/classroom', label: '课堂首页', note: '任务与反馈' },
+  { to: '/student/tasks/q1', label: '答题', note: '提交答案' },
 ]
 
 // 首页：入口导航。标注每个页面对应的原型来源，便于人工检查。
@@ -27,7 +27,7 @@ export default function Home() {
           轻量级线上课堂互动平台 · 原型迁移演示（room: {ROOM}）
         </p>
 
-        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted">讲师端 · pages/teacher</h2>
+        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted">讲师端</h2>
         <nav className="mt-3 grid gap-2">
           {teacherLinks.map((l) => (
             <Link
@@ -41,7 +41,7 @@ export default function Home() {
           ))}
         </nav>
 
-        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted">学生端 · pages/student</h2>
+        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted">学生端</h2>
         <nav className="mt-3 grid gap-2">
           {studentLinks.map((l) => (
             <Link

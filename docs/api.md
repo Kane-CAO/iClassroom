@@ -3,7 +3,7 @@
 > 本文档为 iClassroom MVP 阶段的 API 契约（API Contract），用于前后端联调对齐。
 > 本阶段只定义接口契约，不代表后端已实现。字段、错误码以本文档为准。
 >
-> - Base URL（HTTP）：`http://localhost:8080/api`（前端通过 `VITE_API_BASE_URL` 注入，禁止硬编码）
+> - Base URL（HTTP）：`http://localhost:8080`（前端通过 `VITE_API_BASE_URL` 注入，禁止硬编码；`/api` 前缀由前端 API client 统一拼接）
 > - Base URL（WebSocket，后续接入）：`ws://localhost:8080/ws`
 > - 学生端入口：`http://localhost:5173/student`
 > - 所有时间字段统一使用 UTC ISO-8601 格式（例如 `2026-06-10T18:00:00Z`）。
@@ -1333,10 +1333,9 @@ IMAGE_FILE_MISSING
 6. **teacherToken 如果丢失是否支持恢复？**
    MVP 不支持，后续讲师账号体系再解决。
 
-7. **【实现差异提醒】统一响应格式字段名。**
+7. **【已处理】统一响应格式字段名。**
    本文档约定为 `{ success, message, data, errorCode }`。
-   但当前前端 `frontend/src/api/client.ts` 中的 `ApiResponse<T>` 定义为 `{ code, message, data }`（使用 `code` 而非 `success`）。
-   联调前需统一二者：建议以本文档为准，后续调整前端 client 的类型定义（本阶段不修改代码）。
+   前端 `frontend/src/api/client.ts` 已按该结构定义 `ApiResponse<T>`。
 
 ---
 
