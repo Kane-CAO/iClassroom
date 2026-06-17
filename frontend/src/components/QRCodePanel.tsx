@@ -69,6 +69,9 @@ export default function QRCodePanel({
       </p>
       <p className="mt-2 break-all text-xs text-muted dark:text-slate-500">{joinUrl}</p>
       <p className="mt-3 text-xs text-muted dark:text-slate-400">{subtitle}</p>
+      <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+        当前二维码为展示占位，真实扫码后续接入。
+      </p>
     </Card>
   )
 }

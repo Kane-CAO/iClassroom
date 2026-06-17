@@ -6,15 +6,24 @@ import { teacherMocks } from '../../mocks'
 interface TeacherHeaderProps {
   roomCode: string
   /** 当前高亮的导航 tab。 */
-  active?: 'courses' | 'assignments'
+  active?: 'dashboard' | 'course' | 'review' | 'analytics' | 'display'
 }
 
 // 讲师端顶部导航。迁移自 iClassroom.html 的 <header>。
-export default function TeacherHeader({ roomCode, active = 'courses' }: TeacherHeaderProps) {
+export default function TeacherHeader({ roomCode, active = 'dashboard' }: TeacherHeaderProps) {
   const navigate = useNavigate()
   const profile = teacherMocks.teacherProfile
+  const canNavigateRoom = isNavigableRoomCode(roomCode)
 
-  const tabClass = (tab: 'courses' | 'assignments') =>
+  const navItems = [
+    { key: 'dashboard', label: '概览', path: `/teacher/rooms/${roomCode}/dashboard` },
+    { key: 'course', label: '任务', path: `/teacher/rooms/${roomCode}/course` },
+    { key: 'review', label: '批改', path: `/teacher/rooms/${roomCode}/review` },
+    { key: 'analytics', label: '数据', path: `/teacher/rooms/${roomCode}/analytics` },
+    { key: 'display', label: '大屏', path: `/teacher/rooms/${roomCode}/display` },
+  ] as const
+
+  const tabClass = (tab: TeacherHeaderProps['active']) =>
     `rounded-md px-5 py-2 text-sm font-semibold transition ${
       active === tab
         ? 'bg-brand-50 text-brand-700 shadow-[inset_0_0_0_1px_rgba(37,99,235,.16)] dark:bg-brand-500/14 dark:text-brand-100'
@@ -26,7 +35,7 @@ export default function TeacherHeader({ roomCode, active = 'courses' }: TeacherH
       <div className="flex h-16 items-center px-8">
         <button
           className="flex items-center gap-3"
-          onClick={() => navigate(`/teacher/rooms/${roomCode}/dashboard`)}
+          onClick={() => navigate(canNavigateRoom ? `/teacher/rooms/${roomCode}/dashboard` : '/')}
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">
             iC
@@ -34,22 +43,21 @@ export default function TeacherHeader({ roomCode, active = 'courses' }: TeacherH
           <span className="text-lg font-semibold tracking-normal">iClassroom</span>
         </button>
 
-        <nav className="mx-auto flex items-center gap-2 rounded-lg border border-line bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
-          <button
-            className={tabClass('courses')}
-            onClick={() => navigate(`/teacher/rooms/${roomCode}/dashboard`)}
-          >
-            课堂
-          </button>
-          <button
-            className={tabClass('assignments')}
-            onClick={() => navigate(`/teacher/rooms/${roomCode}/course`)}
-          >
-            任务
-          </button>
-        </nav>
+        {canNavigateRoom && (
+          <nav className="mx-auto flex items-center gap-1 overflow-x-auto rounded-lg border border-line bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+            {navItems.map((item) => (
+              <button
+                key={item.key}
+                className={tabClass(item.key)}
+                onClick={() => navigate(item.path)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        )}
 
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center gap-3 ${canNavigateRoom ? '' : 'ml-auto'}`}>
           <button
             className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
             aria-label="通知"
@@ -71,4 +79,9 @@ export default function TeacherHeader({ roomCode, active = 'courses' }: TeacherH
       </div>
     </header>
   )
+}
+
+function isNavigableRoomCode(roomCode: string) {
+  const value = roomCode.trim()
+  return Boolean(value) && value !== '新建' && value !== 'New'
 }

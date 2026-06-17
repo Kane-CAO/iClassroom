@@ -33,7 +33,7 @@ const REVIEW_WS_EVENTS: readonly RoomWebSocketEventType[] = [
 ]
 
 export default function Review() {
-  const { roomCode = 'ABC123' } = useParams()
+  const { roomCode = '' } = useParams()
   const navigate = useNavigate()
   const { showToast, ToastView } = useToast()
   const timer = useCountdown(45 * 60)
@@ -214,7 +214,7 @@ export default function Review() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink dark:bg-slate-950 dark:text-slate-100">
-      <TeacherHeader roomCode={roomCode} active="assignments" />
+      <TeacherHeader roomCode={roomCode} active="review" />
 
       <main className="px-8 py-7">
         <div className="mb-5 rounded-lg border border-brand-100 bg-brand-50 p-4 shadow-soft dark:border-brand-500/20 dark:bg-brand-500/10">

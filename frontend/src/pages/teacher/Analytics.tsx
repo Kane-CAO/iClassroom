@@ -14,7 +14,7 @@ import type { Analytics as AnalyticsData, Room } from '../../types/api'
 import type { BadgeTone } from '../../types'
 
 export default function Analytics() {
-  const { roomCode = 'ABC123' } = useParams()
+  const { roomCode = '' } = useParams()
   const navigate = useNavigate()
   const { showToast, ToastView } = useToast()
   const { teacherToken, clear } = useTeacherSession()
@@ -99,7 +99,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink dark:bg-slate-950 dark:text-slate-100">
-      <TeacherHeader roomCode={roomCode} active="courses" />
+      <TeacherHeader roomCode={roomCode} active="analytics" />
 
       <main className="px-8 py-7">
         <div className="flex flex-wrap items-end justify-between gap-4">

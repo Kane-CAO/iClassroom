@@ -53,7 +53,7 @@ const emptyTaskForm: TaskFormState = {
 // /teacher/rooms/:roomCode/course
 // 迁移自 docs/prototypes/iClassroom.html 的 #page-course（课程详情 / 作业管理）。
 export default function CourseDetail() {
-  const { roomCode = 'ABC123' } = useParams()
+  const { roomCode = '' } = useParams()
   const navigate = useNavigate()
   const { showToast, ToastView } = useToast()
   const { teacherToken, clear } = useTeacherSession()
@@ -266,7 +266,7 @@ export default function CourseDetail() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink dark:bg-slate-950 dark:text-slate-100">
-      <TeacherHeader roomCode={roomCode} active="assignments" />
+      <TeacherHeader roomCode={roomCode} active="course" />
 
       <main className="px-8 py-7">
         <Card padded className="!p-6">

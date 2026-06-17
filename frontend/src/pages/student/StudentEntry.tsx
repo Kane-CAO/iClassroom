@@ -17,7 +17,8 @@ export default function StudentEntry() {
   const { showToast, ToastView } = useToast()
   const { identity, join, clear } = useStudentSession()
 
-  const roomCode = searchParams.get('room') ?? ''
+  const roomCode = (searchParams.get('room') ?? '').trim().toUpperCase()
+  const [roomLookupCode, setRoomLookupCode] = useState('')
   const [room, setRoom] = useState<StudentRoomResponse | null>(null)
   const [nickname, setNickname] = useState(identity?.name ?? '')
   const [groupId, setGroupId] = useState<string | null>(null)
@@ -28,18 +29,21 @@ export default function StudentEntry() {
   useEffect(() => {
     let cancelled = false
 
+    if (!roomCode) {
+      setRoom(null)
+      setGroupId(null)
+      setError(null)
+      setLoading(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
     async function loadRoom() {
       setLoading(true)
       setError(null)
 
       try {
-        if (!roomCode) {
-          const message = '缺少房间码'
-          setError(message)
-          showToast(message)
-          return
-        }
-
         const data = await getStudentRoom(roomCode)
         if (cancelled) {
           return
@@ -103,6 +107,17 @@ export default function StudentEntry() {
     }
   }, [identity?.nickname])
 
+  const onLookupRoom = () => {
+    const code = roomLookupCode.trim().toUpperCase()
+    if (!code) {
+      const message = '请输入房间码'
+      setError(message)
+      showToast(message)
+      return
+    }
+    navigate(`/student?room=${encodeURIComponent(code)}`)
+  }
+
   const onJoin = async () => {
     const name = nickname.trim()
     setError(null)
@@ -145,6 +160,54 @@ export default function StudentEntry() {
     return (
       <div className="min-h-screen bg-soft p-8 text-sm text-muted dark:bg-slate-950 dark:text-slate-400">
         正在加载课堂...
+        <ToastView />
+      </div>
+    )
+  }
+
+  if (!roomCode) {
+    return (
+      <div className="min-h-screen bg-soft text-ink dark:bg-slate-950 dark:text-slate-100">
+        <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-6 py-10 sm:px-8">
+          <Card padded className="!p-6">
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">
+              iC
+            </span>
+            <p className="mt-5 text-sm font-semibold text-brand-600 dark:text-brand-100">学生端</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-normal">加入课堂</h1>
+            <p className="mt-3 text-sm leading-6 text-muted dark:text-slate-400">
+              请输入老师提供的房间码。
+            </p>
+
+            {error && (
+              <div className="mt-5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+                {error}
+              </div>
+            )}
+
+            <form
+              className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]"
+              onSubmit={(event) => {
+                event.preventDefault()
+                onLookupRoom()
+              }}
+            >
+              <label className="min-w-0">
+                <span className="sr-only">房间码</span>
+                <input
+                  value={roomLookupCode}
+                  onChange={(event) => setRoomLookupCode(event.target.value.toUpperCase())}
+                  placeholder="例如 ABC123"
+                  className="h-11 w-full rounded-lg border border-line bg-white px-3 text-sm font-semibold tracking-wide outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950"
+                />
+              </label>
+              <button type="submit" className={`${btnGradient} h-11 px-4 py-0`}>
+                <LogIn className="h-4 w-4" />
+                查找课堂
+              </button>
+            </form>
+          </Card>
+        </main>
         <ToastView />
       </div>
     )

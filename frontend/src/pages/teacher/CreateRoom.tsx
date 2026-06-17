@@ -69,7 +69,7 @@ export default function CreateRoom() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink dark:bg-slate-950 dark:text-slate-100">
-      <TeacherHeader roomCode="新建" active="assignments" />
+      <TeacherHeader roomCode="新建" />
 
       <main className="px-8 py-7">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">

@@ -27,7 +27,7 @@ const DASHBOARD_WS_EVENTS: readonly RoomWebSocketEventType[] = [
 // /teacher/rooms/:roomCode/dashboard
 // 迁移自 docs/prototypes/iClassroom.html 的 #page-home（My Courses 概览）。
 export default function Dashboard() {
-  const { roomCode = 'ABC123' } = useParams()
+  const { roomCode = '' } = useParams()
   const navigate = useNavigate()
   const { showToast, ToastView } = useToast()
   const { teacherToken, clear } = useTeacherSession()
@@ -130,7 +130,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink dark:bg-slate-950 dark:text-slate-100">
-      <TeacherHeader roomCode={roomCode} active="courses" />
+      <TeacherHeader roomCode={roomCode} active="dashboard" />
 
       <main className="px-8 py-7">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
