@@ -8,7 +8,7 @@ import (
 )
 
 func newStudentSvc(f *fakeStore) *StudentService {
-	return NewStudentService(f, f, f)
+	return NewStudentService(f, f, f, nil)
 }
 
 func TestJoin_Success(t *testing.T) {

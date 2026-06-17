@@ -21,10 +21,21 @@ func (h *DisplayHandler) Register(rg *gin.RouterGroup) {
 }
 
 func (h *DisplayHandler) Get(c *gin.Context) {
-	view, err := h.display.Get(c.Request.Context(), c.Param("roomCode"), c.GetHeader(headerTeacherToken))
+	view, err := h.display.Get(c.Request.Context(), c.Param("roomCode"))
 	if err != nil {
 		respondError(c, err)
 		return
+	}
+
+	groups := make([]gin.H, 0, len(view.Groups))
+	for _, group := range view.Groups {
+		groups = append(groups, gin.H{
+			"groupId":      group.ID,
+			"groupName":    group.GroupName,
+			"capacity":     group.Capacity,
+			"currentCount": group.CurrentCount,
+			"scoreTotal":   group.ScoreTotal,
+		})
 	}
 
 	ranking := make([]gin.H, 0, len(view.Ranking))
@@ -58,6 +69,8 @@ func (h *DisplayHandler) Get(c *gin.Context) {
 	response.Success(c, gin.H{
 		"roomCode":        view.Room.RoomCode,
 		"title":           view.Room.Title,
+		"status":          view.Room.Status,
+		"groups":          groups,
 		"ranking":         ranking,
 		"currentTask":     displayTaskJSON(view.CurrentTask),
 		"featuredAnswers": featured,

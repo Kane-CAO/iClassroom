@@ -9,6 +9,7 @@ import (
 	"iclassroom/backend/internal/apperr"
 	"iclassroom/backend/internal/domain"
 	"iclassroom/backend/internal/repository"
+	"iclassroom/backend/internal/websocket"
 )
 
 // Room creation bounds. groupCount/groupCapacity default when the request
@@ -33,11 +34,18 @@ type RoomService struct {
 	rooms       RoomRepository
 	groups      GroupRepository
 	frontendURL string // base URL for building joinUrl / dashboard URL
+	broadcaster EventBroadcaster
 }
 
-// NewRoomService constructs a RoomService. frontendURL has no trailing slash.
-func NewRoomService(rooms RoomRepository, groups GroupRepository, frontendURL string) *RoomService {
-	return &RoomService{rooms: rooms, groups: groups, frontendURL: frontendURL}
+// NewRoomService constructs a RoomService. frontendURL has no trailing slash. A
+// nil broadcaster falls back to a noop.
+func NewRoomService(rooms RoomRepository, groups GroupRepository, frontendURL string, broadcaster EventBroadcaster) *RoomService {
+	return &RoomService{
+		rooms:       rooms,
+		groups:      groups,
+		frontendURL: frontendURL,
+		broadcaster: resolveBroadcaster(broadcaster),
+	}
 }
 
 // CreateRoomInput is the validated input for creating a room.
@@ -177,6 +185,12 @@ func (s *RoomService) EndRoom(ctx context.Context, roomCode, teacherToken string
 
 	room.Status = domain.RoomStatusEnded
 	room.EndedAt = &endedAt
+
+	// Room is now ended in the DB: notify everyone so students are locked out.
+	emit(s.broadcaster, room.RoomCode, websocket.EventRoomEnded, map[string]any{
+		"status": room.Status,
+	})
+
 	return room, nil
 }
 

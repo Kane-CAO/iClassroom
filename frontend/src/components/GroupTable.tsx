@@ -30,7 +30,7 @@ export default function GroupTable({ groups, selectable = false, value, onChange
             <span>
               <span className="block text-sm font-semibold">{group.name}</span>
               <span className="block text-xs text-muted dark:text-slate-400">
-                {disabled ? 'Full' : `${group.filled} / ${group.capacity} students`}
+                {disabled ? '已满' : `${group.filled} / ${group.capacity} 人`}
               </span>
             </span>
             {selectable && (

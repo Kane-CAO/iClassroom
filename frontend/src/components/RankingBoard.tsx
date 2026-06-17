@@ -22,7 +22,7 @@ export default function RankingBoard({ rankings, myTeam, withBars = false }: Ran
             <div className="flex items-center justify-between">
               <span className={`text-sm font-semibold ${text}`}>
                 {index + 1}. {row.team}
-                {mine ? ' · My Group' : ''}
+                {mine ? ' · 我的小组' : ''}
               </span>
               <span className={`text-sm font-bold ${text}`}>{row.score}</span>
             </div>

@@ -9,6 +9,7 @@ import (
 	"iclassroom/backend/internal/apperr"
 	"iclassroom/backend/internal/domain"
 	"iclassroom/backend/internal/repository"
+	"iclassroom/backend/internal/websocket"
 )
 
 const maxTaskTitleLen = 255
@@ -21,6 +22,7 @@ type TaskService struct {
 	tasks       TaskRepository
 	submissions SubmissionRepository
 	uploads     UploadService
+	broadcaster EventBroadcaster
 }
 
 func NewTaskService(
@@ -29,6 +31,7 @@ func NewTaskService(
 	students StudentRepository,
 	tasks TaskRepository,
 	submissions SubmissionRepository,
+	broadcaster EventBroadcaster,
 	uploads ...UploadService,
 ) *TaskService {
 	var uploadSvc UploadService
@@ -42,6 +45,7 @@ func NewTaskService(
 		tasks:       tasks,
 		submissions: submissions,
 		uploads:     uploadSvc,
+		broadcaster: resolveBroadcaster(broadcaster),
 	}
 }
 
@@ -140,6 +144,12 @@ func (s *TaskService) Create(ctx context.Context, in CreateTaskInput) (*TaskView
 		return nil, err
 	}
 
+	emit(s.broadcaster, room.RoomCode, websocket.EventTaskPublished, map[string]any{
+		"taskId":     task.ID,
+		"status":     task.Status,
+		"targetType": task.TargetType,
+	})
+
 	return &TaskView{
 		Task:           *task,
 		RoomCode:       room.RoomCode,
@@ -193,6 +203,25 @@ func (s *TaskService) ListForStudent(ctx context.Context, studentToken string) (
 	}
 
 	return out, nil
+}
+
+func (s *TaskService) GetForStudent(ctx context.Context, taskID int64, studentToken string) (*StudentTaskView, error) {
+	if taskID <= 0 {
+		return nil, apperr.TaskNotFound()
+	}
+
+	items, err := s.ListForStudent(ctx, studentToken)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range items {
+		if item.Task.ID == taskID {
+			return &item, nil
+		}
+	}
+
+	return nil, apperr.TaskNotFound()
 }
 
 func (s *TaskService) SubmitText(ctx context.Context, taskID int64, studentToken, contentText string) (*domain.Submission, error) {
@@ -249,6 +278,7 @@ func (s *TaskService) SubmitWithImages(ctx context.Context, taskID int64, studen
 	}
 
 	if len(images) == 0 {
+		s.emitSubmissionCreated(room.RoomCode, submission)
 		return submission, nil
 	}
 
@@ -271,7 +301,19 @@ func (s *TaskService) SubmitWithImages(ctx context.Context, taskID int64, studen
 	}
 
 	submission.Images = storedImages
+	s.emitSubmissionCreated(room.RoomCode, submission)
 	return submission, nil
+}
+
+// emitSubmissionCreated broadcasts a submission_created event with the minimal
+// identifiers clients need to refetch the affected task/submission view.
+func (s *TaskService) emitSubmissionCreated(roomCode string, submission *domain.Submission) {
+	emit(s.broadcaster, roomCode, websocket.EventSubmissionCreated, map[string]any{
+		"submissionId": submission.ID,
+		"taskId":       submission.TaskID,
+		"studentId":    submission.StudentID,
+		"groupId":      submission.GroupID,
+	})
 }
 
 func (s *TaskService) ListSubmissionsForTeacher(ctx context.Context, taskID int64, teacherToken string) ([]SubmissionView, error) {
@@ -339,6 +381,13 @@ func (s *TaskService) updateStatus(ctx context.Context, taskID int64, teacherTok
 		return nil, err
 	}
 
+	if evtType, ok := taskStatusEvent(status); ok {
+		emit(s.broadcaster, room.RoomCode, evtType, map[string]any{
+			"taskId": taskID,
+			"status": status,
+		})
+	}
+
 	return &TaskView{
 		Task: domain.Task{
 			ID:     taskID,
@@ -347,6 +396,19 @@ func (s *TaskService) updateStatus(ctx context.Context, taskID int64, teacherTok
 		},
 		RoomCode: room.RoomCode,
 	}, nil
+}
+
+// taskStatusEvent maps a task status transition to its broadcast event type.
+// The boolean is false for statuses that have no dedicated event.
+func taskStatusEvent(status domain.TaskStatus) (websocket.EventType, bool) {
+	switch status {
+	case domain.TaskStatusPaused:
+		return websocket.EventTaskPaused, true
+	case domain.TaskStatusClosed:
+		return websocket.EventTaskClosed, true
+	default:
+		return "", false
+	}
 }
 
 func (s *TaskService) validateTargetGroups(ctx context.Context, roomID int64, groupIDs []int64) ([]int64, error) {
@@ -484,6 +546,18 @@ func (s *TaskService) GradeSubmission(ctx context.Context, submissionID int64, t
 	if err != nil {
 		return nil, err
 	}
+
+	// Grade committed: the submission's score and the group's running total both
+	// changed, so notify score listeners and refresh the leaderboard.
+	emit(s.broadcaster, room.RoomCode, websocket.EventScoreUpdated, map[string]any{
+		"submissionId": submission.ID,
+		"score":        submission.Score,
+		"groupId":      submission.GroupID,
+	})
+	emit(s.broadcaster, room.RoomCode, websocket.EventRankingUpdated, map[string]any{
+		"groupId":         group.ID,
+		"groupScoreTotal": group.ScoreTotal,
+	})
 
 	return &GradeSubmissionResult{
 		Submission:      *submission,

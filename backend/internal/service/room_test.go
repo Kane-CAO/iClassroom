@@ -12,7 +12,7 @@ import (
 const testFrontend = "http://localhost:5173"
 
 func newRoomSvc(f *fakeStore) *RoomService {
-	return NewRoomService(f, f, testFrontend)
+	return NewRoomService(f, f, testFrontend, nil)
 }
 
 // wantCode asserts err is an *apperr.Error with the given errorCode.
@@ -140,7 +140,7 @@ func TestGetOverview_Counts(t *testing.T) {
 	f := newFakeStore()
 	created := seedRoom(t, f)
 	// Add two students to the first group.
-	studentSvc := NewStudentService(f, f, f)
+	studentSvc := NewStudentService(f, f, f, nil)
 	gid := created.Groups[0].ID
 	for _, name := range []string{"Tom", "Jerry"} {
 		if _, err := studentSvc.Join(context.Background(), created.Room.RoomCode, name, gid); err != nil {
