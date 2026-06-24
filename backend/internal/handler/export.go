@@ -24,9 +24,9 @@ func (h *ExportHandler) Register(rg *gin.RouterGroup) {
 // Get handles GET /api/teacher/rooms/:roomCode/export and streams a zip file.
 func (h *ExportHandler) Get(c *gin.Context) {
 	roomCode := c.Param("roomCode")
-	token := c.GetHeader(headerTeacherToken)
+	token := legacyTeacherToken(c)
 
-	res, err := h.exports.Export(c.Request.Context(), roomCode, token)
+	res, err := h.exports.Export(c.Request.Context(), roomCode, token, currentTeacherID(c))
 	if err != nil {
 		respondError(c, err)
 		return

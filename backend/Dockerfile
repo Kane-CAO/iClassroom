@@ -19,6 +19,7 @@ RUN apk add --no-cache ca-certificates tzdata wget \
 WORKDIR /app
 
 COPY --from=build /out/iclassroom-server /app/iclassroom-server
+COPY --from=build /src/migrations /app/migrations
 
 RUN mkdir -p /app/uploads \
   && chown -R app:app /app

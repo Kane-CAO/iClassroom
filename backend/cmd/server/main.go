@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log"
@@ -37,6 +38,9 @@ func main() {
 		log.Printf("WARNING: database not connected (dev mode, continuing): %v", err)
 	} else {
 		log.Printf("database connected: %s:%s/%s", cfg.DBHost, cfg.DBPort, cfg.DBName)
+		if err := database.ApplyMigrations(db, "migrations"); err != nil {
+			log.Fatalf("database migration failed: %v", err)
+		}
 		defer func() { _ = db.Close() }()
 	}
 
@@ -66,6 +70,7 @@ func newRouter(cfg *config.Config, db *sql.DB) *gin.Engine {
 
 func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	roomRepo := repository.NewRoomRepository(db)
+	accountRepo := repository.NewAccountRepository(db)
 	groupRepo := repository.NewGroupRepository(db)
 	studentRepo := repository.NewStudentRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
@@ -75,6 +80,15 @@ func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	analyticsRepo := repository.NewAnalyticsRepository(db)
 	uploadStore := storage.NewLocalStorage(cfg.UploadDir, cfg.BackendBaseURL)
 	uploadSvc := service.NewLocalUploadService(uploadStore)
+	authSvc := service.NewAuthService(accountRepo, cfg.SessionTTL)
+	if err := authSvc.EnsureInitialAdmin(
+		context.Background(),
+		cfg.InitialAdminUsername,
+		cfg.InitialAdminPassword,
+		cfg.InitialAdminDisplayName,
+	); err != nil {
+		log.Printf("WARNING: initial admin bootstrap failed: %v", err)
+	}
 
 	// Real-time channel. The hub manager is the single broadcast point shared
 	// across the app; the /ws endpoint is mounted at the root, not under /api,
@@ -93,6 +107,9 @@ func registerAPIRoutes(router *gin.Engine, cfg *config.Config, db *sql.DB) {
 	exportSvc := service.NewExportService(roomRepo, taskRepo, submissionRepo)
 
 	api := router.Group("/api")
+	api.Use(middleware.OptionalAuth(authSvc))
+	handler.NewAuthHandler(authSvc).Register(api)
+	handler.NewAdminTeacherHandler(authSvc).Register(api)
 	handler.NewRoomHandler(roomSvc).Register(api)
 	handler.NewStudentHandler(studentSvc).Register(api)
 	handler.NewTaskHandler(taskSvc).Register(api)

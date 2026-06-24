@@ -7,6 +7,7 @@ import { btnPrimary } from '../../components/ui/buttons'
 import { useToast } from '../../components/ui/useToast'
 import { createRoom } from '../../api/rooms'
 import { setTeacherRoomSession } from '../../utils/session'
+import { useTeacherSession } from '../../hooks/useTeacherSession'
 
 const inputClass =
   'mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-slate-800 dark:bg-slate-950'
@@ -20,6 +21,7 @@ const DEFAULT_GROUP_CAPACITY = 5
 export default function CreateRoom() {
   const navigate = useNavigate()
   const { showToast, ToastView } = useToast()
+  const { token, hasTeacherAccess } = useTeacherSession()
 
   const [title, setTitle] = useState('用户画像研究包')
   const [loading, setLoading] = useState(false)
@@ -38,18 +40,28 @@ export default function CreateRoom() {
       showToast(message)
       return
     }
+    if (!hasTeacherAccess) {
+      const message = '请先登录讲师账号'
+      setError(message)
+      showToast(message)
+      navigate('/teacher/login')
+      return
+    }
 
     setLoading(true)
     setError(null)
     showToast('正在创建课堂...')
 
     try {
-      const room = await createRoom({
-        title: roomTitle,
-        groupCount: DEFAULT_GROUP_COUNT,
-        groupCapacity: DEFAULT_GROUP_CAPACITY,
-        allowChooseGroup: true,
-      })
+      const room = await createRoom(
+        {
+          title: roomTitle,
+          groupCount: DEFAULT_GROUP_COUNT,
+          groupCapacity: DEFAULT_GROUP_CAPACITY,
+          allowChooseGroup: true,
+        },
+        { token },
+      )
 
       setTeacherRoomSession({
         roomCode: room.roomCode,

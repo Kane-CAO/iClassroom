@@ -56,7 +56,7 @@ export default function CourseDetail() {
   const { roomCode = '' } = useParams()
   const navigate = useNavigate()
   const { showToast, ToastView } = useToast()
-  const { teacherToken, clear } = useTeacherSession()
+  const { token, teacherToken, hasTeacherAccess, clear } = useTeacherSession()
   const [room, setRoom] = useState<Room | null>(null)
   const [overview, setOverview] = useState<RoomOverview | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
@@ -91,8 +91,8 @@ export default function CourseDetail() {
     const nextTitle = taskForm.title.trim()
     const nextDescription = taskForm.description.trim()
 
-    if (!teacherToken) {
-      setFormError('老师会话缺失，请重新创建课堂。')
+    if (!hasTeacherAccess) {
+      setFormError('老师会话缺失，请重新登录。')
       return
     }
     if (isRoomEnded) {
@@ -135,7 +135,7 @@ export default function CourseDetail() {
     setFormError(null)
 
     try {
-      await createTask(roomCode, body, { teacherToken })
+      await createTask(roomCode, body, { token, teacherToken })
       showToast('任务已发布')
       setCreateOpen(false)
       refreshCourseData()
@@ -149,8 +149,8 @@ export default function CourseDetail() {
   }
 
   const updateTaskStatus = async (task: Task, action: 'pause' | 'close') => {
-    if (!teacherToken) {
-      setError('老师会话缺失，请重新创建课堂。')
+    if (!hasTeacherAccess) {
+      setError('老师会话缺失，请重新登录。')
       showToast('老师会话缺失')
       return
     }
@@ -164,10 +164,10 @@ export default function CourseDetail() {
 
     try {
       if (action === 'pause') {
-        await pauseTask(task.taskId, { teacherToken })
+        await pauseTask(task.taskId, { token, teacherToken })
         showToast('任务已暂停')
       } else {
-        await closeTask(task.taskId, { teacherToken })
+        await closeTask(task.taskId, { token, teacherToken })
         showToast('任务已关闭')
       }
       refreshCourseData()
@@ -195,17 +195,17 @@ export default function CourseDetail() {
     async function loadCourseData() {
       setError(null)
 
-      if (!teacherToken) {
+      if (!hasTeacherAccess) {
         setRoom(null)
         setOverview(null)
         setTasks([])
-        setError('老师会话缺失，请重新创建课堂。')
+        setError('老师会话缺失，请重新登录。')
         setLoading(false)
         return
       }
 
       try {
-        const auth = { teacherToken }
+        const auth = { token, teacherToken }
         const [roomData, overviewData, taskData] = await Promise.all([
           getRoom(roomCode, auth),
           getRoomOverview(roomCode, auth),
@@ -225,7 +225,7 @@ export default function CourseDetail() {
         }
         if (isAuthError(err)) {
           clear()
-          setError('老师凭证无效或已过期，请重新创建课堂。')
+          setError('老师凭证无效或已过期，请重新登录。')
         } else {
           setError(getErrorMessage(err, '加载课堂数据失败。'))
         }
@@ -246,7 +246,7 @@ export default function CourseDetail() {
     return () => {
       cancelled = true
     }
-  }, [clear, loading, roomCode, teacherToken])
+  }, [clear, hasTeacherAccess, loading, roomCode, teacherToken, token])
 
   useRoomWebSocket({
     roomCode,
@@ -289,6 +289,7 @@ export default function CourseDetail() {
               </button>
               <TeacherRoomActions
                 roomCode={roomCode}
+                token={token}
                 teacherToken={teacherToken}
                 roomEnded={isRoomEnded}
                 showExport={false}
@@ -431,6 +432,7 @@ export default function CourseDetail() {
                 </button>
                 <TeacherRoomActions
                   roomCode={roomCode}
+                  token={token}
                   teacherToken={teacherToken}
                   roomEnded={isRoomEnded}
                   className="grid gap-2"

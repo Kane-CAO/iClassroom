@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   clearTeacherRoomSession,
+  getTeacherAuthToken,
   getTeacherSession,
   getTeacherToken,
   setTeacherRoomSession,
@@ -26,7 +27,9 @@ export function useTeacherSession() {
   return {
     session,
     roomCode: session?.roomCode ?? '',
+    token: session?.token ?? getTeacherAuthToken(),
     teacherToken: session?.teacherToken ?? getTeacherToken(),
+    hasTeacherAccess: Boolean(session?.token || getTeacherAuthToken() || session?.teacherToken || getTeacherToken()),
     save,
     clear,
   }

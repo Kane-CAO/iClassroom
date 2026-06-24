@@ -9,7 +9,15 @@ import (
 	"iclassroom/backend/internal/repository"
 )
 
-func verifyTeacherForRoom(ctx context.Context, rooms RoomRepository, room *domain.Room, teacherToken string) error {
+func verifyTeacherForRoom(ctx context.Context, rooms RoomRepository, room *domain.Room, teacherToken string, teacherIDs ...int64) error {
+	if len(teacherIDs) > 0 && teacherIDs[0] > 0 {
+		if room.TeacherID != nil && *room.TeacherID == teacherIDs[0] {
+			return nil
+		}
+		if teacherToken == "" {
+			return apperr.RoomAccessDenied()
+		}
+	}
 	if teacherToken == "" {
 		return apperr.InvalidTeacherToken()
 	}
@@ -26,7 +34,7 @@ func verifyTeacherForRoom(ctx context.Context, rooms RoomRepository, room *domai
 	return apperr.InvalidTeacherToken()
 }
 
-func verifyTeacherByRoomCode(ctx context.Context, rooms RoomRepository, roomCode, teacherToken string) (*domain.Room, error) {
+func verifyTeacherByRoomCode(ctx context.Context, rooms RoomRepository, roomCode, teacherToken string, teacherIDs ...int64) (*domain.Room, error) {
 	room, err := rooms.GetByRoomCode(ctx, roomCode)
 	if errors.Is(err, repository.ErrNotFound) {
 		return nil, apperr.RoomNotFound()
@@ -34,7 +42,7 @@ func verifyTeacherByRoomCode(ctx context.Context, rooms RoomRepository, roomCode
 	if err != nil {
 		return nil, err
 	}
-	if err := verifyTeacherForRoom(ctx, rooms, room, teacherToken); err != nil {
+	if err := verifyTeacherForRoom(ctx, rooms, room, teacherToken, teacherIDs...); err != nil {
 		return nil, err
 	}
 	return room, nil

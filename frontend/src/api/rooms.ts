@@ -2,25 +2,26 @@ import { apiClient } from './client'
 import type { CreateRoomRequest, CreateRoomResponse, Room, RoomOverview } from '../types/api'
 
 interface TeacherAuth {
-  teacherToken: string
+  token?: string
+  teacherToken?: string
 }
 
-export function createRoom(body: CreateRoomRequest) {
-  return apiClient.post<CreateRoomResponse, CreateRoomRequest>('/teacher/rooms', body)
+export function createRoom(body: CreateRoomRequest, auth?: TeacherAuth) {
+  return apiClient.post<CreateRoomResponse, CreateRoomRequest>('/teacher/rooms', body, auth)
 }
 
 export function getRoom(roomCode: string, auth: TeacherAuth) {
-  return apiClient.get<Room>(`/teacher/rooms/${roomCode}`, { teacherToken: auth.teacherToken })
+  return apiClient.get<Room>(`/teacher/rooms/${roomCode}`, auth)
 }
 
 export function getRoomOverview(roomCode: string, auth: TeacherAuth) {
-  return apiClient.get<RoomOverview>(`/teacher/rooms/${roomCode}/overview`, { teacherToken: auth.teacherToken })
+  return apiClient.get<RoomOverview>(`/teacher/rooms/${roomCode}/overview`, auth)
 }
 
 export function endRoom(roomCode: string, auth: TeacherAuth) {
   return apiClient.post<Pick<Room, 'roomCode' | 'status' | 'endedAt'>>(
     `/teacher/rooms/${roomCode}/end`,
     undefined,
-    { teacherToken: auth.teacherToken },
+    auth,
   )
 }

@@ -21,7 +21,7 @@ func NewFeaturedAnswerRepository(db *sql.DB) *FeaturedAnswerRepository {
 
 // GetRoomBySubmissionID loads the room that owns a submission.
 func (r *FeaturedAnswerRepository) GetRoomBySubmissionID(ctx context.Context, submissionID int64) (*domain.Room, error) {
-	const q = `SELECT rm.id, rm.room_code, rm.title, rm.status, rm.group_count, rm.group_capacity,
+	const q = `SELECT rm.id, rm.teacher_id, rm.room_code, rm.title, rm.status, rm.group_count, rm.group_capacity,
 rm.allow_choose_group, rm.teacher_token, rm.created_at, rm.updated_at, rm.ended_at
 FROM rooms rm
 INNER JOIN submissions s ON s.room_id = rm.id

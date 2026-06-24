@@ -52,6 +52,7 @@ func NewTaskService(
 type CreateTaskInput struct {
 	RoomCode       string
 	TeacherToken   string
+	TeacherID      int64
 	Title          string
 	Description    string
 	AttachmentURL  string
@@ -101,7 +102,7 @@ type StudentResultsView struct {
 }
 
 func (s *TaskService) Create(ctx context.Context, in CreateTaskInput) (*TaskView, error) {
-	room, err := s.verifyTeacherByRoomCode(ctx, in.RoomCode, in.TeacherToken)
+	room, err := s.verifyTeacherByRoomCode(ctx, in.RoomCode, in.TeacherToken, in.TeacherID)
 	if err != nil {
 		return nil, err
 	}
@@ -157,8 +158,8 @@ func (s *TaskService) Create(ctx context.Context, in CreateTaskInput) (*TaskView
 	}, nil
 }
 
-func (s *TaskService) ListForTeacher(ctx context.Context, roomCode, teacherToken string) ([]TaskView, error) {
-	room, err := s.verifyTeacherByRoomCode(ctx, roomCode, teacherToken)
+func (s *TaskService) ListForTeacher(ctx context.Context, roomCode, teacherToken string, teacherIDs ...int64) ([]TaskView, error) {
+	room, err := s.verifyTeacherByRoomCode(ctx, roomCode, teacherToken, teacherIDs...)
 	if err != nil {
 		return nil, err
 	}
@@ -225,10 +226,14 @@ func (s *TaskService) GetForStudent(ctx context.Context, taskID int64, studentTo
 }
 
 func (s *TaskService) SubmitText(ctx context.Context, taskID int64, studentToken, contentText string) (*domain.Submission, error) {
-	return s.SubmitWithImages(ctx, taskID, studentToken, contentText, nil)
+	return s.SubmitWithAttachments(ctx, taskID, studentToken, contentText, nil, nil)
 }
 
 func (s *TaskService) SubmitWithImages(ctx context.Context, taskID int64, studentToken, contentText string, images []UploadedFile) (*domain.Submission, error) {
+	return s.SubmitWithAttachments(ctx, taskID, studentToken, contentText, images, nil)
+}
+
+func (s *TaskService) SubmitWithAttachments(ctx context.Context, taskID int64, studentToken, contentText string, images []UploadedFile, files []UploadedFile) (*domain.Submission, error) {
 	if taskID <= 0 {
 		return nil, apperr.TaskNotFound()
 	}
@@ -239,7 +244,7 @@ func (s *TaskService) SubmitWithImages(ctx context.Context, taskID int64, studen
 	}
 
 	content := strings.TrimSpace(contentText)
-	if content == "" || len([]rune(content)) > maxSubmissionTextLen {
+	if (content == "" && len(images) == 0 && len(files) == 0) || len([]rune(content)) > maxSubmissionTextLen {
 		return nil, apperr.InvalidSubmissionContent()
 	}
 
@@ -277,7 +282,7 @@ func (s *TaskService) SubmitWithImages(ctx context.Context, taskID int64, studen
 		return nil, err
 	}
 
-	if len(images) == 0 {
+	if len(images) == 0 && len(files) == 0 {
 		s.emitSubmissionCreated(room.RoomCode, submission)
 		return submission, nil
 	}
@@ -292,15 +297,30 @@ func (s *TaskService) SubmitWithImages(ctx context.Context, taskID int64, studen
 		_ = s.submissions.DeleteByID(ctx, submission.ID)
 		return nil, err
 	}
-
-	storedImages, err := s.submissions.CreateImages(ctx, submission.ID, savedImages)
+	savedFiles, err := s.uploads.SaveSubmissionFiles(ctx, room.RoomCode, taskID, student.ID, files)
 	if err != nil {
 		_ = s.uploads.DeleteSubmissionImages(ctx, savedImages)
 		_ = s.submissions.DeleteByID(ctx, submission.ID)
 		return nil, err
 	}
 
+	storedImages, err := s.submissions.CreateImages(ctx, submission.ID, savedImages)
+	if err != nil {
+		_ = s.uploads.DeleteSubmissionImages(ctx, savedImages)
+		_ = s.uploads.DeleteSubmissionFiles(ctx, savedFiles)
+		_ = s.submissions.DeleteByID(ctx, submission.ID)
+		return nil, err
+	}
+	storedFiles, err := s.submissions.CreateFiles(ctx, submission.ID, savedFiles)
+	if err != nil {
+		_ = s.uploads.DeleteSubmissionImages(ctx, savedImages)
+		_ = s.uploads.DeleteSubmissionFiles(ctx, savedFiles)
+		_ = s.submissions.DeleteByID(ctx, submission.ID)
+		return nil, err
+	}
+
 	submission.Images = storedImages
+	submission.Files = storedFiles
 	s.emitSubmissionCreated(room.RoomCode, submission)
 	return submission, nil
 }
@@ -316,7 +336,7 @@ func (s *TaskService) emitSubmissionCreated(roomCode string, submission *domain.
 	})
 }
 
-func (s *TaskService) ListSubmissionsForTeacher(ctx context.Context, taskID int64, teacherToken string) ([]SubmissionView, error) {
+func (s *TaskService) ListSubmissionsForTeacher(ctx context.Context, taskID int64, teacherToken string, teacherIDs ...int64) ([]SubmissionView, error) {
 	if taskID <= 0 {
 		return nil, apperr.TaskNotFound()
 	}
@@ -329,7 +349,7 @@ func (s *TaskService) ListSubmissionsForTeacher(ctx context.Context, taskID int6
 		return nil, err
 	}
 
-	if err := s.verifyTeacherAgainstRoom(ctx, room, teacherToken); err != nil {
+	if err := s.verifyTeacherAgainstRoom(ctx, room, teacherToken, teacherIDs...); err != nil {
 		return nil, err
 	}
 
@@ -350,15 +370,15 @@ func (s *TaskService) ListSubmissionsForTeacher(ctx context.Context, taskID int6
 	return out, nil
 }
 
-func (s *TaskService) Pause(ctx context.Context, taskID int64, teacherToken string) (*TaskView, error) {
-	return s.updateStatus(ctx, taskID, teacherToken, domain.TaskStatusPaused)
+func (s *TaskService) Pause(ctx context.Context, taskID int64, teacherToken string, teacherIDs ...int64) (*TaskView, error) {
+	return s.updateStatus(ctx, taskID, teacherToken, domain.TaskStatusPaused, teacherIDs...)
 }
 
-func (s *TaskService) Close(ctx context.Context, taskID int64, teacherToken string) (*TaskView, error) {
-	return s.updateStatus(ctx, taskID, teacherToken, domain.TaskStatusClosed)
+func (s *TaskService) Close(ctx context.Context, taskID int64, teacherToken string, teacherIDs ...int64) (*TaskView, error) {
+	return s.updateStatus(ctx, taskID, teacherToken, domain.TaskStatusClosed, teacherIDs...)
 }
 
-func (s *TaskService) updateStatus(ctx context.Context, taskID int64, teacherToken string, status domain.TaskStatus) (*TaskView, error) {
+func (s *TaskService) updateStatus(ctx context.Context, taskID int64, teacherToken string, status domain.TaskStatus, teacherIDs ...int64) (*TaskView, error) {
 	if taskID <= 0 {
 		return nil, apperr.TaskNotFound()
 	}
@@ -371,7 +391,7 @@ func (s *TaskService) updateStatus(ctx context.Context, taskID int64, teacherTok
 		return nil, err
 	}
 
-	if err := s.verifyTeacherAgainstRoom(ctx, room, teacherToken); err != nil {
+	if err := s.verifyTeacherAgainstRoom(ctx, room, teacherToken, teacherIDs...); err != nil {
 		return nil, err
 	}
 
@@ -465,7 +485,7 @@ func (s *TaskService) verifyStudent(ctx context.Context, studentToken string) (*
 	return student, nil
 }
 
-func (s *TaskService) verifyTeacherByRoomCode(ctx context.Context, roomCode, teacherToken string) (*domain.Room, error) {
+func (s *TaskService) verifyTeacherByRoomCode(ctx context.Context, roomCode, teacherToken string, teacherIDs ...int64) (*domain.Room, error) {
 	room, err := s.rooms.GetByRoomCode(ctx, roomCode)
 	if errors.Is(err, repository.ErrNotFound) {
 		return nil, apperr.RoomNotFound()
@@ -474,14 +494,22 @@ func (s *TaskService) verifyTeacherByRoomCode(ctx context.Context, roomCode, tea
 		return nil, err
 	}
 
-	if err := s.verifyTeacherAgainstRoom(ctx, room, teacherToken); err != nil {
+	if err := s.verifyTeacherAgainstRoom(ctx, room, teacherToken, teacherIDs...); err != nil {
 		return nil, err
 	}
 
 	return room, nil
 }
 
-func (s *TaskService) verifyTeacherAgainstRoom(ctx context.Context, room *domain.Room, teacherToken string) error {
+func (s *TaskService) verifyTeacherAgainstRoom(ctx context.Context, room *domain.Room, teacherToken string, teacherIDs ...int64) error {
+	if len(teacherIDs) > 0 && teacherIDs[0] > 0 {
+		if room.TeacherID != nil && *room.TeacherID == teacherIDs[0] {
+			return nil
+		}
+		if teacherToken == "" {
+			return apperr.RoomAccessDenied()
+		}
+	}
 	if teacherToken == "" {
 		return apperr.InvalidTeacherToken()
 	}
@@ -510,7 +538,7 @@ type LeaderboardView struct {
 	Entries  []LeaderboardEntry
 }
 
-func (s *TaskService) GradeSubmission(ctx context.Context, submissionID int64, teacherToken string, score int, comment string) (*GradeSubmissionResult, error) {
+func (s *TaskService) GradeSubmission(ctx context.Context, submissionID int64, teacherToken string, score int, comment string, teacherIDs ...int64) (*GradeSubmissionResult, error) {
 	if submissionID <= 0 {
 		return nil, apperr.SubmissionNotFound()
 	}
@@ -527,7 +555,7 @@ func (s *TaskService) GradeSubmission(ctx context.Context, submissionID int64, t
 		return nil, err
 	}
 
-	if err := s.verifyTeacherAgainstRoom(ctx, room, teacherToken); err != nil {
+	if err := s.verifyTeacherAgainstRoom(ctx, room, teacherToken, teacherIDs...); err != nil {
 		return nil, err
 	}
 
@@ -610,8 +638,8 @@ func (s *TaskService) GetStudentResults(ctx context.Context, studentToken string
 	}, nil
 }
 
-func (s *TaskService) GetLeaderboardForTeacher(ctx context.Context, roomCode, teacherToken string) (*LeaderboardView, error) {
-	room, err := s.verifyTeacherByRoomCode(ctx, roomCode, teacherToken)
+func (s *TaskService) GetLeaderboardForTeacher(ctx context.Context, roomCode, teacherToken string, teacherIDs ...int64) (*LeaderboardView, error) {
+	room, err := s.verifyTeacherByRoomCode(ctx, roomCode, teacherToken, teacherIDs...)
 	if err != nil {
 		return nil, err
 	}

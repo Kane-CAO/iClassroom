@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, ImagePlus, Send } from 'lucide-react'
+import { ArrowLeft, FileUp, ImagePlus, Send, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import StudentHeader from '../../components/layout/StudentHeader'
 import Card from '../../components/ui/Card'
@@ -10,7 +10,7 @@ import { useRoomWebSocket } from '../../hooks/useRoomWebSocket'
 import { useStudentSession } from '../../hooks/useStudentSession'
 import { ApiRequestError } from '../../api/client'
 import { getStudentTask } from '../../api/student'
-import { submitTask } from '../../api/tasks'
+import { submitTaskForm } from '../../api/tasks'
 import type { RoomWebSocketEventType } from '../../api/websocket'
 import type { BadgeTone } from '../../types'
 import type { Task } from '../../types/api'
@@ -32,12 +32,16 @@ export default function TaskDetail() {
 
   const [task, setTask] = useState<Task | null>(null)
   const [answer, setAnswer] = useState('')
-  const [tab, setTab] = useState<'text' | 'image'>('text')
+  const [tab, setTab] = useState<'answer' | 'attachments'>('answer')
+  const [images, setImages] = useState<File[]>([])
+  const [files, setFiles] = useState<File[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [roomEnded, setRoomEnded] = useState(false)
   const [refreshVersion, setRefreshVersion] = useState(0)
+  const draftKey = roomCode && parsedTaskId ? `student:draft:${roomCode}:${parsedTaskId}` : ''
+  const submitted = task?.mySubmissionStatus === 'submitted' || task?.mySubmissionStatus === 'graded'
 
   const refreshTaskDetailData = useCallback(() => {
     setRefreshVersion((version) => version + 1)
@@ -98,6 +102,23 @@ export default function TaskDetail() {
     }
   }, [clear, parsedTaskId, refreshVersion, roomCode, studentToken])
 
+  useEffect(() => {
+    if (!draftKey) {
+      return
+    }
+    const saved = window.localStorage.getItem(draftKey)
+    if (saved && !answer) {
+      setAnswer(saved)
+    }
+  }, [answer, draftKey])
+
+  useEffect(() => {
+    if (!draftKey || submitted) {
+      return
+    }
+    window.localStorage.setItem(draftKey, answer)
+  }, [answer, draftKey, submitted])
+
   const ws = useRoomWebSocket({
     roomCode,
     role: 'student',
@@ -114,9 +135,9 @@ export default function TaskDetail() {
     onReconnect: refreshTaskDetailData,
   })
 
-  const submitted = task?.mySubmissionStatus === 'submitted' || task?.mySubmissionStatus === 'graded'
   const blockedReason = task ? getSubmitBlockedReason(task, roomEnded) : '当前任务不可用。'
-  const canSubmit = Boolean(task && !blockedReason && answer.trim().length > 0 && !submitting)
+  const hasPayload = answer.trim().length > 0 || images.length > 0 || files.length > 0
+  const canSubmit = Boolean(task && !blockedReason && hasPayload && !submitting)
   const currentStatus = task ? taskStatus(task, roomEnded) : { label: '加载中', tone: 'slate' as const }
 
   const onSubmit = async () => {
@@ -127,10 +148,9 @@ export default function TaskDetail() {
       return
     }
 
-    const contentText = answer.trim()
-    if (!contentText) {
-      setError('提交前请先填写答案。')
-      showToast('请先填写答案')
+    if (!hasPayload) {
+      setError('提交前请填写答案或选择附件。')
+      showToast('请填写答案或选择附件')
       return
     }
 
@@ -138,7 +158,14 @@ export default function TaskDetail() {
     setError(null)
 
     try {
-      await submitTask(task.taskId, { contentText }, { studentToken })
+      const body = new FormData()
+      body.set('contentText', answer.trim())
+      images.forEach((file) => body.append('images[]', file))
+      files.forEach((file) => body.append('files[]', file))
+      await submitTaskForm(task.taskId, body, { studentToken })
+      if (draftKey) {
+        window.localStorage.removeItem(draftKey)
+      }
       showToast('任务已提交')
       refreshTaskDetailData()
       setTimeout(() => navigate('/student/classroom'), 500)
@@ -150,6 +177,48 @@ export default function TaskDetail() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const addImages = (fileList: FileList | null) => {
+    if (!fileList) {
+      return
+    }
+    const next = [...images, ...Array.from(fileList)].slice(0, 3)
+    const tooLarge = next.some((file) => file.size > 5 * 1024 * 1024)
+    if (tooLarge) {
+      setError('图片单张不能超过 5MB。')
+      showToast('图片单张不能超过 5MB')
+      return
+    }
+    setImages(next)
+  }
+
+  const addFiles = (fileList: FileList | null) => {
+    if (!fileList) {
+      return
+    }
+    const next = [...files, ...Array.from(fileList)].slice(0, 5)
+    const hasVideo = next.some((file) => file.type.startsWith('video/'))
+    if (hasVideo) {
+      setError('不支持上传视频文件。')
+      showToast('不支持上传视频文件')
+      return
+    }
+    const tooLarge = next.some((file) => file.size > 20 * 1024 * 1024)
+    if (tooLarge) {
+      setError('文件单个不能超过 20MB。')
+      showToast('文件单个不能超过 20MB')
+      return
+    }
+    setFiles(next)
+  }
+
+  const removeImage = (index: number) => {
+    setImages((current) => current.filter((_, i) => i !== index))
+  }
+
+  const removeFile = (index: number) => {
+    setFiles((current) => current.filter((_, i) => i !== index))
   }
 
   const tabClass = (active: boolean) =>
@@ -213,15 +282,15 @@ export default function TaskDetail() {
                 </div>
 
                 <div className="flex rounded-lg border border-line bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950">
-                  <button className={tabClass(tab === 'text')} onClick={() => setTab('text')}>
+                  <button className={tabClass(tab === 'answer')} onClick={() => setTab('answer')}>
                     文字提交
                   </button>
-                  <button className={tabClass(tab === 'image')} onClick={() => setTab('image')}>
-                    图片上传
+                  <button className={tabClass(tab === 'attachments')} onClick={() => setTab('attachments')}>
+                    附件上传
                   </button>
                 </div>
 
-                {tab === 'text' ? (
+                {tab === 'answer' ? (
                   <div className="mt-5">
                     <label className="block">
                       <span className="mb-2 block text-sm font-semibold">文字回答</span>
@@ -233,18 +302,56 @@ export default function TaskDetail() {
                         className="h-[300px] w-full rounded-lg border border-line bg-white p-4 text-sm leading-7 outline-none transition focus:border-brand-500 disabled:opacity-70 dark:border-slate-800 dark:bg-slate-950"
                       />
                     </label>
+                    {!submitted && (
+                      <p className="mt-2 text-xs font-semibold text-muted dark:text-slate-400">
+                        草稿会自动保存在本机，提交成功后清除。
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="mt-5">
-                    <div className="flex h-[220px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-line bg-slate-50 text-center dark:border-slate-800 dark:bg-slate-950">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm dark:bg-slate-900 dark:text-brand-100">
-                        <ImagePlus className="h-6 w-6" />
-                      </div>
-                      <p className="mt-4 text-sm font-semibold">图片上传暂未实现</p>
-                      <p className="mt-1 text-xs text-muted dark:text-slate-400">
-                        当前版本先支持稳定的文字提交，图片上传入口暂未开放。
-                      </p>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <label className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-line bg-slate-50 p-5 text-center dark:border-slate-800 dark:bg-slate-950">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm dark:bg-slate-900 dark:text-brand-100">
+                          <ImagePlus className="h-6 w-6" />
+                        </div>
+                        <p className="mt-4 text-sm font-semibold">选择图片</p>
+                        <p className="mt-1 text-xs text-muted dark:text-slate-400">最多 3 张，单张不超过 5MB。</p>
+                        <input
+                          className="hidden"
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          multiple
+                          disabled={Boolean(blockedReason) || submitting}
+                          onChange={(event) => addImages(event.target.files)}
+                        />
+                      </label>
+                      <label className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-line bg-slate-50 p-5 text-center dark:border-slate-800 dark:bg-slate-950">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm dark:bg-slate-900 dark:text-brand-100">
+                          <FileUp className="h-6 w-6" />
+                        </div>
+                        <p className="mt-4 text-sm font-semibold">选择文件</p>
+                        <p className="mt-1 text-xs text-muted dark:text-slate-400">PDF、Office、压缩包或文本文件。</p>
+                        <input
+                          className="hidden"
+                          type="file"
+                          multiple
+                          disabled={Boolean(blockedReason) || submitting}
+                          onChange={(event) => addFiles(event.target.files)}
+                        />
+                      </label>
                     </div>
+
+                    {(images.length > 0 || files.length > 0) && (
+                      <div className="mt-4 space-y-2">
+                        {images.map((file, index) => (
+                          <AttachmentRow key={`${file.name}-${index}`} file={file} onRemove={() => removeImage(index)} />
+                        ))}
+                        {files.map((file, index) => (
+                          <AttachmentRow key={`${file.name}-${index}`} file={file} onRemove={() => removeFile(index)} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </>
@@ -256,7 +363,7 @@ export default function TaskDetail() {
                 返回
               </button>
               <p className="hidden text-sm text-muted sm:block dark:text-slate-400">
-                {blockedReason ?? '确认答案无误后提交。'}
+                {blockedReason ?? '确认答案和附件无误后提交。'}
               </p>
               <button className={btnGradient} disabled={!canSubmit} onClick={onSubmit}>
                 <Send className="h-4 w-4" />
@@ -268,6 +375,23 @@ export default function TaskDetail() {
       </main>
 
       <ToastView />
+    </div>
+  )
+}
+
+function AttachmentRow({ file, onRemove }: { file: File; onRemove: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
+      <span className="min-w-0 truncate font-semibold">{file.name}</span>
+      <span className="shrink-0 text-xs text-muted dark:text-slate-400">{formatFileSize(file.size)}</span>
+      <button
+        type="button"
+        className="shrink-0 rounded-md border border-line p-1 text-slate-500 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
+        onClick={onRemove}
+        aria-label="移除附件"
+      >
+        <X className="h-4 w-4" />
+      </button>
     </div>
   )
 }
@@ -353,4 +477,14 @@ function formatDateTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function formatFileSize(size: number) {
+  if (!Number.isFinite(size) || size <= 0) {
+    return '0 KB'
+  }
+  if (size < 1024 * 1024) {
+    return `${Math.ceil(size / 1024)} KB`
+  }
+  return `${(size / 1024 / 1024).toFixed(1)} MB`
 }

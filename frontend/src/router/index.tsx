@@ -1,5 +1,8 @@
 import { createBrowserRouter } from 'react-router-dom'
 import Home from '../pages/Home'
+import AdminLogin from '../pages/admin/AdminLogin'
+import TeacherAccounts from '../pages/admin/TeacherAccounts'
+import TeacherLogin from '../pages/teacher/TeacherLogin'
 import CreateRoom from '../pages/teacher/CreateRoom'
 import Dashboard from '../pages/teacher/Dashboard'
 import CourseDetail from '../pages/teacher/CourseDetail'
@@ -14,7 +17,12 @@ import TaskDetail from '../pages/student/TaskDetail'
 export const router = createBrowserRouter([
   { path: '/', element: <Home /> },
 
+  // 管理者端
+  { path: '/admin/login', element: <AdminLogin /> },
+  { path: '/admin/teachers', element: <TeacherAccounts /> },
+
   // 讲师端（电脑优先）
+  { path: '/teacher/login', element: <TeacherLogin /> },
   { path: '/teacher/create-room', element: <CreateRoom /> },
   { path: '/teacher/rooms/:roomCode/dashboard', element: <Dashboard /> },
   { path: '/teacher/rooms/:roomCode/course', element: <CourseDetail /> },

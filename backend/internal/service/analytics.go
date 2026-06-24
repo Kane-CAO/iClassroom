@@ -45,8 +45,8 @@ type AnalyticsView struct {
 	SubmissionTimeline []AnalyticsSubmissionTimelinePoint
 }
 
-func (s *AnalyticsService) Get(ctx context.Context, roomCode, teacherToken string) (*AnalyticsView, error) {
-	room, err := verifyTeacherByRoomCode(ctx, s.rooms, roomCode, teacherToken)
+func (s *AnalyticsService) Get(ctx context.Context, roomCode, teacherToken string, teacherIDs ...int64) (*AnalyticsView, error) {
+	room, err := verifyTeacherByRoomCode(ctx, s.rooms, roomCode, teacherToken, teacherIDs...)
 	if err != nil {
 		return nil, err
 	}

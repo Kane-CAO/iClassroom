@@ -25,26 +25,38 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-const roomColumns = `id, room_code, title, status, group_count, group_capacity,
+const roomColumns = `id, teacher_id, room_code, title, status, group_count, group_capacity,
 	allow_choose_group, teacher_token, created_at, updated_at, ended_at`
 
 // scanRoom reads one room row. endedAt is nullable.
 func scanRoom(s rowScanner) (*domain.Room, error) {
 	var (
 		r       domain.Room
+		teacherID sql.NullInt64
 		endedAt sql.NullTime
 	)
 	if err := s.Scan(
-		&r.ID, &r.RoomCode, &r.Title, &r.Status, &r.GroupCount, &r.GroupCapacity,
+		&r.ID, &teacherID, &r.RoomCode, &r.Title, &r.Status, &r.GroupCount, &r.GroupCapacity,
 		&r.AllowChooseGroup, &r.TeacherToken, &r.CreatedAt, &r.UpdatedAt, &endedAt,
 	); err != nil {
 		return nil, err
+	}
+	if teacherID.Valid {
+		v := teacherID.Int64
+		r.TeacherID = &v
 	}
 	if endedAt.Valid {
 		t := endedAt.Time
 		r.EndedAt = &t
 	}
 	return &r, nil
+}
+
+func nullableInt64(v *int64) any {
+	if v == nil {
+		return nil
+	}
+	return *v
 }
 
 // CreateRoomWithGroups inserts the room and its groups in a single transaction.
@@ -62,10 +74,10 @@ func (r *RoomRepository) CreateRoomWithGroups(ctx context.Context, room *domain.
 	defer func() { _ = tx.Rollback() }()
 
 	const insertRoom = `INSERT INTO rooms
-		(room_code, title, status, group_count, group_capacity, allow_choose_group, teacher_token)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
+		(teacher_id, room_code, title, status, group_count, group_capacity, allow_choose_group, teacher_token)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 	res, err := tx.ExecContext(ctx, insertRoom,
-		room.RoomCode, room.Title, room.Status, room.GroupCount, room.GroupCapacity,
+		nullableInt64(room.TeacherID), room.RoomCode, room.Title, room.Status, room.GroupCount, room.GroupCapacity,
 		room.AllowChooseGroup, room.TeacherToken,
 	)
 	if err != nil {
@@ -132,6 +144,28 @@ func (r *RoomRepository) GetByTeacherToken(ctx context.Context, token string) (*
 		return nil, fmt.Errorf("repository: get room by teacher token: %w", err)
 	}
 	return room, nil
+}
+
+func (r *RoomRepository) ListByTeacherID(ctx context.Context, teacherID int64) ([]domain.Room, error) {
+	const q = `SELECT ` + roomColumns + ` FROM rooms WHERE teacher_id = ? ORDER BY created_at DESC, id DESC`
+	rows, err := r.db.QueryContext(ctx, q, teacherID)
+	if err != nil {
+		return nil, fmt.Errorf("repository: list rooms by teacher: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make([]domain.Room, 0)
+	for rows.Next() {
+		room, err := scanRoom(rows)
+		if err != nil {
+			return nil, fmt.Errorf("repository: scan teacher room: %w", err)
+		}
+		out = append(out, *room)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("repository: iterate teacher rooms: %w", err)
+	}
+	return out, nil
 }
 
 // EndRoom marks a room as ended and records the end timestamp.

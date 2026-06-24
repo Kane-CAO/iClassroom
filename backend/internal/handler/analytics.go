@@ -20,7 +20,7 @@ func (h *AnalyticsHandler) Register(rg *gin.RouterGroup) {
 }
 
 func (h *AnalyticsHandler) Get(c *gin.Context) {
-	view, err := h.analytics.Get(c.Request.Context(), c.Param("roomCode"), c.GetHeader(headerTeacherToken))
+	view, err := h.analytics.Get(c.Request.Context(), c.Param("roomCode"), legacyTeacherToken(c), currentTeacherID(c))
 	if err != nil {
 		respondError(c, err)
 		return

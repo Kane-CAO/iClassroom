@@ -17,7 +17,7 @@ export default function Analytics() {
   const { roomCode = '' } = useParams()
   const navigate = useNavigate()
   const { showToast, ToastView } = useToast()
-  const { teacherToken, clear } = useTeacherSession()
+  const { token, teacherToken, hasTeacherAccess, clear } = useTeacherSession()
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [room, setRoom] = useState<Room | null>(null)
   const [loading, setLoading] = useState(true)
@@ -31,16 +31,16 @@ export default function Analytics() {
       setLoading(true)
       setError(null)
 
-      if (!teacherToken) {
+      if (!hasTeacherAccess) {
         setRoom(null)
         setAnalytics(null)
-        setError('老师会话缺失，请重新创建课堂。')
+        setError('老师会话缺失，请重新登录。')
         setLoading(false)
         return
       }
 
       try {
-        const auth = { teacherToken }
+        const auth = { token, teacherToken }
         const [roomData, analyticsData] = await Promise.all([
           getRoom(roomCode, auth),
           getAnalytics(roomCode, auth),
@@ -74,7 +74,7 @@ export default function Analytics() {
     return () => {
       cancelled = true
     }
-  }, [clear, refreshVersion, roomCode, teacherToken])
+  }, [clear, hasTeacherAccess, refreshVersion, roomCode, teacherToken, token])
 
   const refreshRoomData = () => {
     setRefreshVersion((version) => version + 1)
@@ -113,6 +113,7 @@ export default function Analytics() {
             {loading && <span className="text-sm font-semibold text-muted dark:text-slate-400">加载中...</span>}
             <TeacherRoomActions
               roomCode={roomCode}
+              token={token}
               teacherToken={teacherToken}
               roomEnded={roomEnded}
               onEnded={refreshRoomData}

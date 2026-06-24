@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"iclassroom/backend/internal/apperr"
+	"iclassroom/backend/internal/domain"
 	"iclassroom/backend/internal/response"
 	"iclassroom/backend/internal/service"
 )
@@ -24,6 +25,7 @@ func NewRoomHandler(rooms *service.RoomService) *RoomHandler {
 // Register mounts the teacher room routes on the given group.
 func (h *RoomHandler) Register(rg *gin.RouterGroup) {
 	rg.POST("/teacher/rooms", h.Create)
+	rg.GET("/teacher/rooms", h.List)
 	rg.GET("/teacher/rooms/:roomCode", h.Get)
 	rg.GET("/teacher/rooms/:roomCode/overview", h.Overview)
 	rg.POST("/teacher/rooms/:roomCode/end", h.End)
@@ -52,6 +54,7 @@ func (h *RoomHandler) Create(c *gin.Context) {
 	}
 
 	res, err := h.rooms.CreateRoom(c.Request.Context(), service.CreateRoomInput{
+		TeacherID:        currentTeacherID(c),
 		Title:            req.Title,
 		GroupCount:       req.GroupCount,
 		GroupCapacity:    req.GroupCapacity,
@@ -81,34 +84,46 @@ func (h *RoomHandler) Create(c *gin.Context) {
 	})
 }
 
+func (h *RoomHandler) List(c *gin.Context) {
+	teacherID := currentTeacherID(c)
+	if teacherID <= 0 {
+		respondError(c, apperr.Unauthorized())
+		return
+	}
+	rooms, err := h.rooms.ListRoomsForTeacher(c.Request.Context(), teacherID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	out := make([]gin.H, 0, len(rooms))
+	for _, room := range rooms {
+		out = append(out, roomJSON(room))
+	}
+	response.Success(c, out)
+}
+
 // Get handles GET /api/teacher/rooms/:roomCode.
 func (h *RoomHandler) Get(c *gin.Context) {
 	roomCode := c.Param("roomCode")
-	token := c.GetHeader(headerTeacherToken)
+	token := legacyTeacherToken(c)
+	teacherID := currentTeacherID(c)
 
-	room, err := h.rooms.GetRoom(c.Request.Context(), roomCode, token)
+	room, err := h.rooms.GetRoomForTeacher(c.Request.Context(), roomCode, teacherID, token)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	response.Success(c, gin.H{
-		"roomCode":         room.RoomCode,
-		"title":            room.Title,
-		"status":           room.Status,
-		"groupCount":       room.GroupCount,
-		"groupCapacity":    room.GroupCapacity,
-		"allowChooseGroup": room.AllowChooseGroup,
-		"createdAt":        room.CreatedAt,
-	})
+	response.Success(c, roomJSON(*room))
 }
 
 // Overview handles GET /api/teacher/rooms/:roomCode/overview.
 func (h *RoomHandler) Overview(c *gin.Context) {
 	roomCode := c.Param("roomCode")
-	token := c.GetHeader(headerTeacherToken)
+	token := legacyTeacherToken(c)
+	teacherID := currentTeacherID(c)
 
-	ov, err := h.rooms.GetOverview(c.Request.Context(), roomCode, token)
+	ov, err := h.rooms.GetOverviewForTeacher(c.Request.Context(), roomCode, teacherID, token)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -139,9 +154,10 @@ func (h *RoomHandler) Overview(c *gin.Context) {
 // End handles POST /api/teacher/rooms/:roomCode/end.
 func (h *RoomHandler) End(c *gin.Context) {
 	roomCode := c.Param("roomCode")
-	token := c.GetHeader(headerTeacherToken)
+	token := legacyTeacherToken(c)
+	teacherID := currentTeacherID(c)
 
-	room, err := h.rooms.EndRoom(c.Request.Context(), roomCode, token)
+	room, err := h.rooms.EndRoomForTeacher(c.Request.Context(), roomCode, teacherID, token)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -152,4 +168,17 @@ func (h *RoomHandler) End(c *gin.Context) {
 		"status":   room.Status,
 		"endedAt":  room.EndedAt,
 	})
+}
+
+func roomJSON(room domain.Room) gin.H {
+	return gin.H{
+		"roomCode":         room.RoomCode,
+		"title":            room.Title,
+		"status":           room.Status,
+		"groupCount":       room.GroupCount,
+		"groupCapacity":    room.GroupCapacity,
+		"allowChooseGroup": room.AllowChooseGroup,
+		"createdAt":        room.CreatedAt,
+		"endedAt":          room.EndedAt,
+	}
 }

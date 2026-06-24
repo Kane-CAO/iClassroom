@@ -21,7 +21,7 @@ func (h *DisplayHandler) Register(rg *gin.RouterGroup) {
 }
 
 func (h *DisplayHandler) Get(c *gin.Context) {
-	view, err := h.display.Get(c.Request.Context(), c.Param("roomCode"))
+	view, err := h.display.GetForTeacher(c.Request.Context(), c.Param("roomCode"), legacyTeacherToken(c), currentTeacherID(c))
 	if err != nil {
 		respondError(c, err)
 		return

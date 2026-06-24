@@ -14,7 +14,8 @@ import type {
 } from '../types/api'
 
 interface TeacherAuth {
-  teacherToken: string
+  token?: string
+  teacherToken?: string
 }
 
 interface StudentAuth {
@@ -22,13 +23,11 @@ interface StudentAuth {
 }
 
 export function createTask(roomCode: string, body: CreateTaskRequest, auth: TeacherAuth) {
-  return apiClient.post<Task, CreateTaskRequest>(`/teacher/rooms/${roomCode}/tasks`, body, {
-    teacherToken: auth.teacherToken,
-  })
+  return apiClient.post<Task, CreateTaskRequest>(`/teacher/rooms/${roomCode}/tasks`, body, auth)
 }
 
 export function listTeacherTasks(roomCode: string, auth: TeacherAuth) {
-  return apiClient.get<Task[]>(`/teacher/rooms/${roomCode}/tasks`, { teacherToken: auth.teacherToken })
+  return apiClient.get<Task[]>(`/teacher/rooms/${roomCode}/tasks`, auth)
 }
 
 export function listStudentTasks(auth: StudentAuth) {
@@ -36,15 +35,11 @@ export function listStudentTasks(auth: StudentAuth) {
 }
 
 export function pauseTask(taskId: number, auth: TeacherAuth) {
-  return apiClient.patch<TaskStatusResponse>(`/teacher/tasks/${taskId}/pause`, undefined, {
-    teacherToken: auth.teacherToken,
-  })
+  return apiClient.patch<TaskStatusResponse>(`/teacher/tasks/${taskId}/pause`, undefined, auth)
 }
 
 export function closeTask(taskId: number, auth: TeacherAuth) {
-  return apiClient.patch<TaskStatusResponse>(`/teacher/tasks/${taskId}/close`, undefined, {
-    teacherToken: auth.teacherToken,
-  })
+  return apiClient.patch<TaskStatusResponse>(`/teacher/tasks/${taskId}/close`, undefined, auth)
 }
 
 export function submitTask(taskId: number, body: SubmitTaskRequest, auth: StudentAuth) {
@@ -60,14 +55,14 @@ export function submitTaskForm(taskId: number, body: FormData, auth: StudentAuth
 }
 
 export function listTaskSubmissions(taskId: number, auth: TeacherAuth) {
-  return apiClient.get<Submission[]>(`/teacher/tasks/${taskId}/submissions`, { teacherToken: auth.teacherToken })
+  return apiClient.get<Submission[]>(`/teacher/tasks/${taskId}/submissions`, auth)
 }
 
 export function gradeSubmission(submissionId: number, body: GradeSubmissionRequest, auth: TeacherAuth) {
   return apiClient.post<GradeSubmissionResponse, GradeSubmissionRequest>(
     `/teacher/submissions/${submissionId}/grade`,
     body,
-    { teacherToken: auth.teacherToken },
+    auth,
   )
 }
 
@@ -76,7 +71,7 @@ export function getStudentResults(auth: StudentAuth) {
 }
 
 export function getTeacherLeaderboard(roomCode: string, auth: TeacherAuth) {
-  return apiClient.get<Leaderboard>(`/teacher/rooms/${roomCode}/leaderboard`, { teacherToken: auth.teacherToken })
+  return apiClient.get<Leaderboard>(`/teacher/rooms/${roomCode}/leaderboard`, auth)
 }
 
 export function getStudentLeaderboard(auth: StudentAuth) {
@@ -87,6 +82,6 @@ export function featureSubmission(submissionId: number, body: FeatureSubmissionR
   return apiClient.post<FeatureSubmissionResponse, FeatureSubmissionRequest>(
     `/teacher/submissions/${submissionId}/feature`,
     body,
-    { teacherToken: auth.teacherToken },
+    auth,
   )
 }

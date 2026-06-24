@@ -1,6 +1,11 @@
 import { apiClient } from './client'
 import type { DisplayState } from '../types/api'
 
-export function getDisplayState(roomCode: string) {
-  return apiClient.get<DisplayState>(`/teacher/rooms/${roomCode}/display`)
+interface TeacherAuth {
+  token?: string
+  teacherToken?: string
+}
+
+export function getDisplayState(roomCode: string, auth?: TeacherAuth) {
+  return apiClient.get<DisplayState>(`/teacher/rooms/${roomCode}/display`, auth)
 }

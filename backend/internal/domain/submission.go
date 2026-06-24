@@ -55,6 +55,7 @@ type Submission struct {
 	// Images is populated by the repository/service when loading a submission
 	// with its attachments; it is not a database column.
 	Images []SubmissionImage `json:"images,omitempty"`
+	Files  []SubmissionFile  `json:"files,omitempty"`
 }
 
 // SubmissionImage is a single uploaded image belonging to a submission.
@@ -70,3 +71,21 @@ type SubmissionImage struct {
 	MimeType     string    `json:"mimeType"`
 	CreatedAt    time.Time `json:"-"`
 }
+
+// SubmissionAttachment is the V2 unified attachment row. Kind is "image" or
+// "file"; FilePath is server-only, while FileURL can be returned to clients.
+type SubmissionAttachment struct {
+	ID               int64     `json:"attachmentId"`
+	SubmissionID     int64     `json:"-"`
+	Kind             string    `json:"kind"`
+	FileURL          string    `json:"fileUrl"`
+	FilePath         string    `json:"-"`
+	OriginalFileName string    `json:"originalFileName"`
+	StoredFileName   string    `json:"storedFileName"`
+	FileSize         int64     `json:"fileSize"`
+	MimeType         string    `json:"mimeType"`
+	CreatedAt        time.Time `json:"-"`
+}
+
+// SubmissionFile is the file-facing subset of SubmissionAttachment.
+type SubmissionFile = SubmissionAttachment

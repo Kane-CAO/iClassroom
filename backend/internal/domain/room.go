@@ -31,6 +31,7 @@ func (s RoomStatus) Valid() bool {
 // Room is a classroom created by a teacher. It owns groups, students and tasks.
 type Room struct {
 	ID               int64      `json:"-"`
+	TeacherID        *int64     `json:"-"`
 	RoomCode         string     `json:"roomCode"`
 	Title            string     `json:"title"`
 	Status           RoomStatus `json:"status"`

@@ -181,6 +181,21 @@ func (r *contractSubmissionRepo) CreateImages(ctx context.Context, submissionID 
 	return out, nil
 }
 
+func (r *contractSubmissionRepo) CreateFiles(ctx context.Context, submissionID int64, files []domain.SubmissionFile) ([]domain.SubmissionFile, error) {
+	out := make([]domain.SubmissionFile, len(files))
+	for i := range files {
+		file := files[i]
+		file.ID = int64(i + 1)
+		file.SubmissionID = submissionID
+		file.Kind = "file"
+		out[i] = file
+	}
+	if sub, ok := r.created[submissionID]; ok {
+		sub.Files = append([]domain.SubmissionFile(nil), out...)
+	}
+	return out, nil
+}
+
 func (r *contractSubmissionRepo) DeleteByID(ctx context.Context, submissionID int64) error {
 	delete(r.created, submissionID)
 	delete(r.graded, submissionID)

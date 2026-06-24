@@ -4,6 +4,30 @@ export type TaskTargetType = 'all' | 'groups'
 export type SubmissionStatus = 'submitted' | 'graded'
 export type StudentSubmissionStatus = SubmissionStatus | 'notSubmitted'
 export type DisplayMode = 'anonymous' | 'showGroup'
+export type UserRole = 'admin' | 'teacher'
+export type AccountStatus = 'active' | 'disabled'
+
+export interface AuthUser {
+  userId: number
+  role: UserRole
+  username: string
+  displayName?: string
+}
+
+export interface AuthLoginResponse {
+  token: string
+  user: AuthUser
+}
+
+export interface TeacherAccount {
+  teacherId: number
+  username: string
+  displayName: string
+  status: AccountStatus
+  createdAt: string
+  updatedAt?: string
+  lastLoginAt?: string
+}
 
 export interface Group {
   groupId: number
@@ -61,6 +85,16 @@ export interface SubmissionImage {
   mimeType: string
 }
 
+export interface SubmissionFile {
+  attachmentId: number
+  fileUrl: string
+  fileName: string
+  storedFileName?: string
+  fileSize: number
+  mimeType: string
+  originalFileName?: string
+}
+
 export interface Submission {
   submissionId: number
   taskId: number
@@ -68,6 +102,7 @@ export interface Submission {
   groupId: number
   contentText: string
   images: SubmissionImage[]
+  files?: SubmissionFile[]
   status: SubmissionStatus
   score: number | null
   comment: string

@@ -7,7 +7,8 @@ import { btnSecondary } from '../ui/buttons'
 
 interface TeacherRoomActionsProps {
   roomCode: string
-  teacherToken: string
+  token?: string
+  teacherToken?: string
   roomEnded: boolean
   className?: string
   buttonClassName?: string
@@ -20,6 +21,7 @@ interface TeacherRoomActionsProps {
 
 export default function TeacherRoomActions({
   roomCode,
+  token,
   teacherToken,
   roomEnded,
   className = '',
@@ -38,8 +40,8 @@ export default function TeacherRoomActions({
       onSuccess('课堂已经结束')
       return
     }
-    if (!teacherToken) {
-      onError('老师会话缺失，请重新创建课堂。')
+    if (!token && !teacherToken) {
+      onError('老师会话缺失，请重新登录。')
       return
     }
     const confirmed = window.confirm(`确定结束课堂 ${roomCode} 吗？结束后学生将不能继续提交答案。`)
@@ -49,7 +51,7 @@ export default function TeacherRoomActions({
 
     setEnding(true)
     try {
-      await endRoom(roomCode, { teacherToken })
+      await endRoom(roomCode, { token, teacherToken })
       onSuccess('课堂已结束')
       onEnded()
     } catch (err: unknown) {
@@ -65,14 +67,14 @@ export default function TeacherRoomActions({
   }
 
   const handleExportRoom = async () => {
-    if (!teacherToken) {
-      onError('老师会话缺失，请重新创建课堂。')
+    if (!token && !teacherToken) {
+      onError('老师会话缺失，请重新登录。')
       return
     }
 
     setExporting(true)
     try {
-      const result = await exportRoom(roomCode, { teacherToken })
+      const result = await exportRoom(roomCode, { token, teacherToken })
       downloadBlob(result.blob, result.fileName || `${roomCode}-export.zip`)
       onSuccess('导出文件已下载')
     } catch (err: unknown) {
