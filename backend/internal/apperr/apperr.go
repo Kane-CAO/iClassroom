@@ -66,6 +66,30 @@ func InvalidTeacherToken() *Error {
 	return New(http.StatusUnauthorized, "INVALID_TEACHER_TOKEN", "missing or invalid teacher token")
 }
 
+func InvalidCredentials() *Error {
+	return New(http.StatusUnauthorized, "INVALID_CREDENTIALS", "username or password is incorrect")
+}
+
+func Unauthorized() *Error {
+	return New(http.StatusUnauthorized, "UNAUTHORIZED", "missing or invalid session")
+}
+
+func Forbidden() *Error {
+	return New(http.StatusForbidden, "FORBIDDEN", "permission denied")
+}
+
+func TeacherDisabled() *Error {
+	return New(http.StatusForbidden, "TEACHER_DISABLED", "teacher account disabled")
+}
+
+func TeacherNotFound() *Error {
+	return New(http.StatusNotFound, "TEACHER_NOT_FOUND", "teacher account not found")
+}
+
+func TeacherUsernameDuplicated() *Error {
+	return New(http.StatusConflict, "TEACHER_USERNAME_DUPLICATED", "teacher username already exists")
+}
+
 func InvalidStudentToken() *Error {
 	return New(http.StatusUnauthorized, "INVALID_STUDENT_TOKEN", "missing or invalid student token")
 }
@@ -140,6 +164,14 @@ func InvalidImageType() *Error {
 
 func UploadFailed() *Error {
 	return New(http.StatusInternalServerError, "UPLOAD_FAILED", "failed to upload images")
+}
+
+func FileTooLarge() *Error {
+	return New(http.StatusBadRequest, "FILE_TOO_LARGE", "file is too large")
+}
+
+func InvalidFileType() *Error {
+	return New(http.StatusBadRequest, "INVALID_FILE_TYPE", "file type is not supported")
 }
 
 func InvalidDisplayMode() *Error {

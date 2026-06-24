@@ -32,8 +32,8 @@ func NewExportService(rooms RoomRepository, tasks TaskRepository, submissions Su
 	return &ExportService{rooms: rooms, tasks: tasks, submissions: submissions}
 }
 
-func (s *ExportService) Export(ctx context.Context, roomCode, teacherToken string) (*ExportResult, error) {
-	room, err := verifyTeacherByRoomCode(ctx, s.rooms, roomCode, teacherToken)
+func (s *ExportService) Export(ctx context.Context, roomCode, teacherToken string, teacherIDs ...int64) (*ExportResult, error) {
+	room, err := verifyTeacherByRoomCode(ctx, s.rooms, roomCode, teacherToken, teacherIDs...)
 	if err != nil {
 		return nil, err
 	}
@@ -45,6 +45,7 @@ func (s *ExportService) Export(ctx context.Context, roomCode, teacherToken strin
 
 	rows := make([]exportutil.SubmissionRow, 0)
 	images := make([]exportutil.ImageFile, 0)
+	files := make([]exportutil.AttachmentFile, 0)
 
 	for _, taskItem := range taskItems {
 		submissions, err := s.submissions.ListByTaskID(ctx, taskItem.Task.ID)
@@ -52,13 +53,14 @@ func (s *ExportService) Export(ctx context.Context, roomCode, teacherToken strin
 			return nil, apperr.ExportFailed()
 		}
 		for _, item := range submissions {
-			row, rowImages := exportSubmissionRow(room, taskItem.Task.Title, item)
+			row, rowImages, rowFiles := exportSubmissionRow(room, taskItem.Task.Title, item)
 			rows = append(rows, row)
 			images = append(images, rowImages...)
+			files = append(files, rowFiles...)
 		}
 	}
 
-	data, err := exportutil.BuildSubmissionsArchive(rows, images)
+	data, err := exportutil.BuildSubmissionsArchiveWithFiles(rows, images, files)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, apperr.ImageFileMissing()
@@ -81,7 +83,7 @@ func (s *ExportService) Export(ctx context.Context, roomCode, teacherToken strin
 	}, nil
 }
 
-func exportSubmissionRow(room *domain.Room, taskTitle string, item repository.SubmissionWithStudent) (exportutil.SubmissionRow, []exportutil.ImageFile) {
+func exportSubmissionRow(room *domain.Room, taskTitle string, item repository.SubmissionWithStudent) (exportutil.SubmissionRow, []exportutil.ImageFile, []exportutil.AttachmentFile) {
 	imageFileNames := make([]string, 0, len(item.Submission.Images))
 	images := make([]exportutil.ImageFile, 0, len(item.Submission.Images))
 	for _, image := range item.Submission.Images {
@@ -95,6 +97,23 @@ func exportSubmissionRow(room *domain.Room, taskTitle string, item repository.Su
 			FilePath: image.FilePath,
 		})
 	}
+	fileNames := make([]string, 0, len(item.Submission.Files))
+	files := make([]exportutil.AttachmentFile, 0, len(item.Submission.Files))
+	for _, file := range item.Submission.Files {
+		name := file.OriginalFileName
+		if name == "" {
+			name = file.StoredFileName
+		}
+		fileNames = append(fileNames, name)
+		files = append(files, exportutil.AttachmentFile{
+			ArchivePath: path.Join(
+				"task_"+strconv.FormatInt(item.Submission.TaskID, 10),
+				"group_"+strconv.FormatInt(item.Submission.GroupID, 10),
+				"student_"+sanitizeSegment(item.Student.Nickname)+"_"+sanitizeSegment(name),
+			),
+			FilePath: file.FilePath,
+		})
+	}
 
 	row := exportutil.SubmissionRow{
 		RoomCode:        room.RoomCode,
@@ -104,6 +123,7 @@ func exportSubmissionRow(room *domain.Room, taskTitle string, item repository.Su
 		TaskTitle:       taskTitle,
 		ContentText:     item.Submission.ContentText,
 		ImageFileNames:  strings.Join(imageFileNames, ", "),
+		FileNames:       strings.Join(fileNames, ", "),
 		Comment:         item.Submission.Comment,
 		SubmittedAt:     item.Submission.SubmittedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
@@ -114,7 +134,7 @@ func exportSubmissionRow(room *domain.Room, taskTitle string, item repository.Su
 		row.GradedAt = item.Submission.GradedAt.UTC().Format("2006-01-02T15:04:05Z")
 	}
 
-	return row, images
+	return row, images, files
 }
 
 func sanitizeSegment(s string) string {

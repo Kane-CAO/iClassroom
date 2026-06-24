@@ -5,6 +5,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -64,6 +65,46 @@ func (s *LocalStorage) SaveSubmissionImage(roomCode string, taskID, studentID in
 	}, nil
 }
 
+// SaveSubmissionFile writes one non-image attachment to the local uploads tree.
+func (s *LocalStorage) SaveSubmissionFile(roomCode string, taskID, studentID int64, index int, originalName, mimeType string, data []byte) (SavedFile, error) {
+	ext := strings.ToLower(filepath.Ext(originalName))
+	if ext == "" {
+		if exts, _ := mime.ExtensionsByType(mimeType); len(exts) > 0 {
+			ext = strings.ToLower(exts[0])
+		}
+	}
+	if ext == "" {
+		ext = ".bin"
+	}
+
+	base := sanitizeUploadName(strings.TrimSuffix(filepath.Base(originalName), filepath.Ext(originalName)))
+	if base == "" {
+		base = "file"
+	}
+	fileName := fmt.Sprintf("file%d_%s%s", index, base, ext)
+	relDir := filepath.Join("rooms", roomCode, "tasks", fmt.Sprintf("%d", taskID), "students", fmt.Sprintf("%d", studentID), "files")
+	absDir := filepath.Join(s.rootDir, relDir)
+	if err := os.MkdirAll(absDir, 0o755); err != nil {
+		return SavedFile{}, fmt.Errorf("storage: create upload dir: %w", err)
+	}
+
+	absPath := filepath.Join(absDir, fileName)
+	if err := os.WriteFile(absPath, data, 0o644); err != nil {
+		return SavedFile{}, fmt.Errorf("storage: write upload file: %w", err)
+	}
+
+	relPath := filepath.ToSlash(filepath.Join(relDir, fileName))
+	fileURL := s.publicBaseURL + "/uploads/" + relPath
+
+	return SavedFile{
+		FileURL:  fileURL,
+		FilePath: absPath,
+		FileName: fileName,
+		FileSize: int64(len(data)),
+		MimeType: mimeType,
+	}, nil
+}
+
 // DeleteFiles removes uploaded files best-effort. Missing files are ignored.
 func (s *LocalStorage) DeleteFiles(files []SavedFile) {
 	for _, file := range files {
@@ -94,4 +135,16 @@ func extensionForMimeType(mimeType string) (string, error) {
 	}
 
 	return "", fmt.Errorf("storage: unsupported mime type %q", mimeType)
+}
+
+var unsafeUploadName = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
+
+func sanitizeUploadName(name string) string {
+	name = strings.TrimSpace(name)
+	name = unsafeUploadName.ReplaceAllString(name, "_")
+	name = strings.Trim(name, "._-")
+	if len(name) > 80 {
+		name = name[:80]
+	}
+	return name
 }

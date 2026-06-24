@@ -228,7 +228,7 @@ func (r *TaskRepository) ListTargetGroupIDs(ctx context.Context, taskID int64) (
 // GetRoomByTaskID loads the room that owns the given task. It is used for
 // teacher-token authorization on task-id based routes.
 func (r *TaskRepository) GetRoomByTaskID(ctx context.Context, taskID int64) (*domain.Room, error) {
-	const q = `SELECT r.id, r.room_code, r.title, r.status, r.group_count, r.group_capacity,
+	const q = `SELECT r.id, r.teacher_id, r.room_code, r.title, r.status, r.group_count, r.group_capacity,
 r.allow_choose_group, r.teacher_token, r.created_at, r.updated_at, r.ended_at
 FROM rooms r
 INNER JOIN tasks t ON t.room_id = r.id

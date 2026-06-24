@@ -117,6 +117,10 @@ func (s *prompt14Store) CreateImages(context.Context, int64, []domain.Submission
 	return nil, nil
 }
 
+func (s *prompt14Store) CreateFiles(context.Context, int64, []domain.SubmissionFile) ([]domain.SubmissionFile, error) {
+	return nil, nil
+}
+
 func (s *prompt14Store) DeleteByID(context.Context, int64) error {
 	return nil
 }

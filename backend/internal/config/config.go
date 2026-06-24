@@ -47,6 +47,13 @@ type Config struct {
 
 	// UploadDir is the filesystem root for uploaded files.
 	UploadDir string
+
+	// Initial admin bootstrap. The service creates this account only when
+	// admin_users is empty.
+	InitialAdminUsername    string
+	InitialAdminPassword    string
+	InitialAdminDisplayName string
+	SessionTTL              time.Duration
 }
 
 // IsProduction reports whether the service runs in production mode.
@@ -90,6 +97,11 @@ func Load() (*Config, error) {
 		FrontendBaseURL: strings.TrimRight(getEnv("FRONTEND_BASE_URL", "http://localhost:5173"), "/"),
 		BackendBaseURL:  strings.TrimRight(getEnv("BACKEND_BASE_URL", "http://localhost:8080"), "/"),
 		UploadDir:       getEnv("UPLOAD_DIR", "./uploads"),
+
+		InitialAdminUsername:    getEnv("INITIAL_ADMIN_USERNAME", "admin"),
+		InitialAdminPassword:    getEnv("INITIAL_ADMIN_PASSWORD", "ChangeMe123"),
+		InitialAdminDisplayName: getEnv("INITIAL_ADMIN_DISPLAY_NAME", "系统管理员"),
+		SessionTTL:              time.Duration(getEnvInt("AUTH_SESSION_TTL_HOURS", 168)) * time.Hour,
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -126,6 +138,15 @@ func (c *Config) validate() error {
 	}
 	if c.UploadDir == "" {
 		return fmt.Errorf("config: UPLOAD_DIR must not be empty")
+	}
+	if c.InitialAdminUsername == "" {
+		return fmt.Errorf("config: INITIAL_ADMIN_USERNAME must not be empty")
+	}
+	if len([]rune(c.InitialAdminPassword)) < 8 {
+		return fmt.Errorf("config: INITIAL_ADMIN_PASSWORD must be at least 8 characters")
+	}
+	if c.SessionTTL <= 0 {
+		return fmt.Errorf("config: AUTH_SESSION_TTL_HOURS must be > 0")
 	}
 	return nil
 }

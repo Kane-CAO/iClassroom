@@ -149,6 +149,10 @@ func (s *exportStore) CreateImages(context.Context, int64, []domain.SubmissionIm
 	return nil, nil
 }
 
+func (s *exportStore) CreateFiles(context.Context, int64, []domain.SubmissionFile) ([]domain.SubmissionFile, error) {
+	return nil, nil
+}
+
 func (s *exportStore) DeleteByID(context.Context, int64) error {
 	return nil
 }

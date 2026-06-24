@@ -1,8 +1,10 @@
 import { getItem, removeItem, setItem } from './storage'
+import type { AuthUser } from '../types/api'
 
 const KEY = {
   studentSession: 'student:identity',
   teacherSession: 'teacher:session',
+  adminSession: 'admin:session',
 }
 
 export interface StudentSession {
@@ -20,8 +22,15 @@ export interface StudentIdentity extends StudentSession {
 }
 
 export interface TeacherSession {
-  roomCode: string
-  teacherToken: string
+  token?: string
+  user?: AuthUser
+  roomCode?: string
+  teacherToken?: string
+}
+
+export interface AdminSession {
+  token: string
+  user: AuthUser
 }
 
 interface LegacyStudentIdentity {
@@ -59,13 +68,36 @@ export function getTeacherToken() {
   return getTeacherSession()?.teacherToken ?? ''
 }
 
+export function getTeacherAuthToken() {
+  return getTeacherSession()?.token ?? ''
+}
+
 export function setTeacherRoomSession(session: TeacherSession): TeacherSession {
-  setItem(KEY.teacherSession, session)
-  return session
+  const current = getTeacherSession()
+  const next = { ...current, ...session }
+  setItem(KEY.teacherSession, next)
+  return next
 }
 
 export function clearTeacherRoomSession() {
   removeItem(KEY.teacherSession)
+}
+
+export function setAdminSession(session: AdminSession): AdminSession {
+  setItem(KEY.adminSession, session)
+  return session
+}
+
+export function getAdminSession(): AdminSession | null {
+  const value = getItem<unknown>(KEY.adminSession)
+  if (!isRecord(value) || !isNonEmptyString(value.token) || !isAuthUser(value.user)) {
+    return null
+  }
+  return { token: value.token, user: value.user }
+}
+
+export function clearAdminSession() {
+  removeItem(KEY.adminSession)
 }
 
 function normalizeStudentSession(value: unknown): StudentIdentity | null {
@@ -94,10 +126,17 @@ function normalizeTeacherSession(value: unknown): TeacherSession | null {
     return null
   }
 
-  if (isNonEmptyString(value.roomCode) && isNonEmptyString(value.teacherToken)) {
+  const token = typeof value.token === 'string' ? value.token : undefined
+  const roomCode = typeof value.roomCode === 'string' ? value.roomCode : undefined
+  const teacherToken = typeof value.teacherToken === 'string' ? value.teacherToken : undefined
+  const user = isAuthUser(value.user) ? value.user : undefined
+
+  if (isNonEmptyString(token) || (isNonEmptyString(roomCode) && isNonEmptyString(teacherToken))) {
     return {
-      roomCode: value.roomCode,
-      teacherToken: value.teacherToken,
+      token,
+      user,
+      roomCode,
+      teacherToken,
     }
   }
 
@@ -157,4 +196,13 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isAuthUser(value: unknown): value is AuthUser {
+  return (
+    isRecord(value) &&
+    typeof value.userId === 'number' &&
+    (value.role === 'admin' || value.role === 'teacher') &&
+    isNonEmptyString(value.username)
+  )
 }

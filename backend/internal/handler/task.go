@@ -67,7 +67,7 @@ type gradeSubmissionRequest struct {
 
 func (h *TaskHandler) Create(c *gin.Context) {
 	roomCode := c.Param("roomCode")
-	token := c.GetHeader(headerTeacherToken)
+	token := legacyTeacherToken(c)
 
 	var req createTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -78,6 +78,7 @@ func (h *TaskHandler) Create(c *gin.Context) {
 	res, err := h.tasks.Create(c.Request.Context(), service.CreateTaskInput{
 		RoomCode:       roomCode,
 		TeacherToken:   token,
+		TeacherID:      currentTeacherID(c),
 		Title:          req.Title,
 		Description:    req.Description,
 		AttachmentURL:  req.AttachmentURL,
@@ -95,9 +96,9 @@ func (h *TaskHandler) Create(c *gin.Context) {
 
 func (h *TaskHandler) List(c *gin.Context) {
 	roomCode := c.Param("roomCode")
-	token := c.GetHeader(headerTeacherToken)
+	token := legacyTeacherToken(c)
 
-	tasks, err := h.tasks.ListForTeacher(c.Request.Context(), roomCode, token)
+	tasks, err := h.tasks.ListForTeacher(c.Request.Context(), roomCode, token, currentTeacherID(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -170,8 +171,13 @@ func (h *TaskHandler) Submit(c *gin.Context) {
 				respondError(c, err)
 				return
 			}
+			fileUploads, err := readUploadedFiles(form)
+			if err != nil {
+				respondError(c, err)
+				return
+			}
 
-			submission, err := h.tasks.SubmitWithImages(c.Request.Context(), taskID, token, contentText, uploads)
+			submission, err := h.tasks.SubmitWithAttachments(c.Request.Context(), taskID, token, contentText, uploads, fileUploads)
 			if err != nil {
 				respondError(c, err)
 				return
@@ -223,9 +229,10 @@ func (h *TaskHandler) GradeSubmission(c *gin.Context) {
 	submission, err := h.tasks.GradeSubmission(
 		c.Request.Context(),
 		submissionID,
-		c.GetHeader(headerTeacherToken),
+		legacyTeacherToken(c),
 		req.Score,
 		req.Comment,
+		currentTeacherID(c),
 	)
 	if err != nil {
 		respondError(c, err)
@@ -242,7 +249,7 @@ func (h *TaskHandler) ListSubmissions(c *gin.Context) {
 		return
 	}
 
-	items, err := h.tasks.ListSubmissionsForTeacher(c.Request.Context(), taskID, c.GetHeader(headerTeacherToken))
+	items, err := h.tasks.ListSubmissionsForTeacher(c.Request.Context(), taskID, legacyTeacherToken(c), currentTeacherID(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -258,9 +265,9 @@ func (h *TaskHandler) ListSubmissions(c *gin.Context) {
 
 func (h *TaskHandler) TeacherLeaderboard(c *gin.Context) {
 	roomCode := c.Param("roomCode")
-	token := c.GetHeader(headerTeacherToken)
+	token := legacyTeacherToken(c)
 
-	view, err := h.tasks.GetLeaderboardForTeacher(c.Request.Context(), roomCode, token)
+	view, err := h.tasks.GetLeaderboardForTeacher(c.Request.Context(), roomCode, token, currentTeacherID(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -314,14 +321,14 @@ func (h *TaskHandler) Close(c *gin.Context) {
 	h.updateStatus(c, h.tasks.Close)
 }
 
-func (h *TaskHandler) updateStatus(c *gin.Context, update func(context.Context, int64, string) (*service.TaskView, error)) {
+func (h *TaskHandler) updateStatus(c *gin.Context, update func(context.Context, int64, string, ...int64) (*service.TaskView, error)) {
 	taskID, err := strconv.ParseInt(c.Param("taskId"), 10, 64)
 	if err != nil || taskID <= 0 {
 		respondError(c, apperr.TaskNotFound())
 		return
 	}
 
-	res, err := update(c.Request.Context(), taskID, c.GetHeader(headerTeacherToken))
+	res, err := update(c.Request.Context(), taskID, legacyTeacherToken(c), currentTeacherID(c))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -380,6 +387,7 @@ func submissionJSON(submission *domain.Submission) gin.H {
 		"groupId":      submission.GroupID,
 		"contentText":  submission.ContentText,
 		"images":       submissionImagesJSON(submission.Images),
+		"files":        submissionFilesJSON(submission.Files),
 		"status":       submission.Status,
 		"score":        submission.Score,
 		"comment":      submission.Comment,
@@ -409,6 +417,7 @@ func submissionWithStudentJSON(item *service.SubmissionView) gin.H {
 		"groupName":    item.Group.GroupName,
 		"contentText":  item.Submission.ContentText,
 		"images":       submissionImagesJSON(item.Submission.Images),
+		"files":        submissionFilesJSON(item.Submission.Files),
 		"status":       item.Submission.Status,
 		"score":        item.Submission.Score,
 		"comment":      item.Submission.Comment,
@@ -426,6 +435,22 @@ func submissionImagesJSON(images []domain.SubmissionImage) []gin.H {
 			"fileName": image.FileName,
 			"fileSize": image.FileSize,
 			"mimeType": image.MimeType,
+		})
+	}
+	return out
+}
+
+func submissionFilesJSON(files []domain.SubmissionFile) []gin.H {
+	out := make([]gin.H, 0, len(files))
+	for _, file := range files {
+		out = append(out, gin.H{
+			"attachmentId":     file.ID,
+			"fileUrl":          file.FileURL,
+			"fileName":         file.OriginalFileName,
+			"storedFileName":   file.StoredFileName,
+			"fileSize":         file.FileSize,
+			"mimeType":         file.MimeType,
+			"originalFileName": file.OriginalFileName,
 		})
 	}
 	return out
@@ -475,6 +500,37 @@ func readUploadedImages(form *multipart.Form) ([]service.UploadedFile, error) {
 	}
 	if len(files) > 3 {
 		return nil, apperr.TooManyImages()
+	}
+
+	uploads := make([]service.UploadedFile, 0, len(files))
+	for _, header := range files {
+		f, err := header.Open()
+		if err != nil {
+			return nil, apperr.UploadFailed()
+		}
+		data, err := io.ReadAll(f)
+		_ = f.Close()
+		if err != nil {
+			return nil, apperr.UploadFailed()
+		}
+
+		uploads = append(uploads, service.UploadedFile{
+			FileName: header.Filename,
+			MimeType: http.DetectContentType(data),
+			Data:     data,
+		})
+	}
+
+	return uploads, nil
+}
+
+func readUploadedFiles(form *multipart.Form) ([]service.UploadedFile, error) {
+	files := form.File["files[]"]
+	if len(files) == 0 {
+		return nil, nil
+	}
+	if len(files) > 5 {
+		return nil, apperr.InvalidRequest("at most 5 files can be uploaded")
 	}
 
 	uploads := make([]service.UploadedFile, 0, len(files))

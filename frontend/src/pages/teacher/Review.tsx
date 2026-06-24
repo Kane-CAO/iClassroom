@@ -37,7 +37,7 @@ export default function Review() {
   const navigate = useNavigate()
   const { showToast, ToastView } = useToast()
   const timer = useCountdown(45 * 60)
-  const { teacherToken, clear } = useTeacherSession()
+  const { token, teacherToken, hasTeacherAccess, clear } = useTeacherSession()
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
@@ -64,16 +64,16 @@ export default function Review() {
       setLoading(true)
       setError(null)
 
-      if (!teacherToken) {
+      if (!hasTeacherAccess) {
         setTasks([])
         setItems([])
-        setError('老师会话缺失，请重新创建课堂。')
+        setError('老师会话缺失，请重新登录。')
         setLoading(false)
         return
       }
 
       try {
-        const auth = { teacherToken }
+        const auth = { token, teacherToken }
         const taskData = await listTeacherTasks(roomCode, auth)
         const nextTaskId = resolveTaskId(taskData, selectedTaskId)
         const submissions = nextTaskId ? await listTaskSubmissions(nextTaskId, auth) : []
@@ -93,7 +93,7 @@ export default function Review() {
 
         if (isAuthError(err)) {
           clear()
-          setError('老师凭证无效或已过期，请重新创建课堂。')
+          setError('老师凭证无效或已过期，请重新登录。')
         } else {
           setError(getErrorMessage(err, '加载提交列表失败。'))
         }
@@ -111,7 +111,7 @@ export default function Review() {
     return () => {
       cancelled = true
     }
-  }, [clear, refreshVersion, roomCode, selectedTaskId, teacherToken])
+  }, [clear, hasTeacherAccess, refreshVersion, roomCode, selectedTaskId, teacherToken, token])
 
   useRoomWebSocket({
     roomCode,
@@ -167,7 +167,7 @@ export default function Review() {
   }
 
   const saveReview = async () => {
-    if (!current || !teacherToken) {
+    if (!current || !hasTeacherAccess) {
       showToast('未选择提交')
       return
     }
@@ -176,7 +176,7 @@ export default function Review() {
     setError(null)
 
     try {
-      await gradeSubmission(current.submissionId, { score, comment: feedback.trim() }, { teacherToken })
+      await gradeSubmission(current.submissionId, { score, comment: feedback.trim() }, { token, teacherToken })
       showToast('批改已保存')
       refreshReviewData()
     } catch (err) {
@@ -189,7 +189,7 @@ export default function Review() {
   }
 
   const featureCurrent = async () => {
-    if (!current || !teacherToken) {
+    if (!current || !hasTeacherAccess) {
       showToast('未选择提交')
       return
     }
@@ -198,7 +198,7 @@ export default function Review() {
     setError(null)
 
     try {
-      await featureSubmission(current.submissionId, { displayMode: 'showGroup' }, { teacherToken })
+      await featureSubmission(current.submissionId, { displayMode: 'showGroup' }, { token, teacherToken })
       showToast('精选答案已更新')
     } catch (err) {
       const message = getErrorMessage(err, '设置精选答案失败。')
@@ -371,9 +371,28 @@ export default function Review() {
 
                 <section>
                   <h3 className="mb-3 text-sm font-semibold">已上传文件</h3>
-                  <div className="rounded-lg border border-dashed border-line bg-slate-50 p-5 text-center text-sm text-muted dark:border-slate-800 dark:bg-slate-950">
-                    文件附件预览暂未实现。
-                  </div>
+                  {current.files && current.files.length > 0 ? (
+                    <div className="space-y-2">
+                      {current.files.map((file) => (
+                        <a
+                          key={file.attachmentId}
+                          href={file.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center justify-between rounded-lg border border-line bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                        >
+                          <span className="truncate">{file.fileName}</span>
+                          <span className="ml-3 shrink-0 text-xs text-muted dark:text-slate-400">
+                            {formatFileSize(file.fileSize)}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-line bg-slate-50 p-5 text-center text-sm text-muted dark:border-slate-800 dark:bg-slate-950">
+                      本次提交没有文件附件。
+                    </div>
+                  )}
                 </section>
 
                 <section>
@@ -539,7 +558,11 @@ function toSubmissionVM(submission: Submission): SubmissionVM {
       label: image.fileName,
       src: image.fileUrl,
     })),
-    files: [],
+    files: (submission.files ?? []).map((file) => ({
+      name: file.fileName,
+      type: file.mimeType,
+      size: formatFileSize(file.fileSize),
+    })),
     history: buildHistory(submission),
   }
 }
@@ -590,4 +613,14 @@ function formatDateTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function formatFileSize(size: number) {
+  if (!Number.isFinite(size) || size <= 0) {
+    return '0 KB'
+  }
+  if (size < 1024 * 1024) {
+    return `${Math.ceil(size / 1024)} KB`
+  }
+  return `${(size / 1024 / 1024).toFixed(1)} MB`
 }

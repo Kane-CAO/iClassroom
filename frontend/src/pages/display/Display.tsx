@@ -10,6 +10,7 @@ import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import { useToast } from '../../components/ui/useToast'
 import { useRoomWebSocket } from '../../hooks/useRoomWebSocket'
+import { useTeacherSession } from '../../hooks/useTeacherSession'
 import type { DisplayFeaturedAnswer, DisplayState, DisplayTask } from '../../types/api'
 import type { BadgeTone, RankingVM, StudentGroupVM } from '../../types'
 
@@ -24,6 +25,7 @@ export default function Display() {
   const { roomCode } = useParams()
   const code = roomCode ?? ''
   const { showToast, ToastView } = useToast()
+  const { token, teacherToken, hasTeacherAccess } = useTeacherSession()
   const [display, setDisplay] = useState<DisplayState | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -43,11 +45,16 @@ export default function Display() {
         setError('缺少房间码')
         return
       }
+      if (!hasTeacherAccess) {
+        setLoading(false)
+        setError('老师会话缺失，请先登录。')
+        return
+      }
 
       setLoading(true)
       setError('')
       try {
-        const data = await getDisplayState(code)
+        const data = await getDisplayState(code, { token, teacherToken })
         if (!active) {
           return
         }
@@ -73,7 +80,7 @@ export default function Display() {
     return () => {
       active = false
     }
-  }, [code, refreshVersion, showToast])
+  }, [code, hasTeacherAccess, refreshVersion, showToast, teacherToken, token])
 
   useRoomWebSocket({
     roomCode: code,

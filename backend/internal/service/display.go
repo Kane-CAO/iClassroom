@@ -59,6 +59,18 @@ func (s *DisplayService) Get(ctx context.Context, roomCode string) (*DisplayView
 		return nil, err
 	}
 
+	return s.build(ctx, room)
+}
+
+func (s *DisplayService) GetForTeacher(ctx context.Context, roomCode, teacherToken string, teacherIDs ...int64) (*DisplayView, error) {
+	room, err := verifyTeacherByRoomCode(ctx, s.rooms, roomCode, teacherToken, teacherIDs...)
+	if err != nil {
+		return nil, err
+	}
+	return s.build(ctx, room)
+}
+
+func (s *DisplayService) build(ctx context.Context, room *domain.Room) (*DisplayView, error) {
 	groups, err := s.groups.ListByRoomID(ctx, room.ID)
 	if err != nil {
 		return nil, err

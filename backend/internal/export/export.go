@@ -21,6 +21,7 @@ type SubmissionRow struct {
 	TaskTitle       string
 	ContentText     string
 	ImageFileNames  string
+	FileNames       string
 	Score           string
 	Comment         string
 	SubmittedAt     string
@@ -33,9 +34,18 @@ type ImageFile struct {
 	FilePath    string
 }
 
+type AttachmentFile struct {
+	ArchivePath string
+	FilePath    string
+}
+
 // BuildSubmissionsArchive returns a zip archive containing submissions.xlsx
 // plus all supplied images.
 func BuildSubmissionsArchive(rows []SubmissionRow, images []ImageFile) ([]byte, error) {
+	return BuildSubmissionsArchiveWithFiles(rows, images, nil)
+}
+
+func BuildSubmissionsArchiveWithFiles(rows []SubmissionRow, images []ImageFile, files []AttachmentFile) ([]byte, error) {
 	xlsx, err := buildWorkbook(rows)
 	if err != nil {
 		return nil, err
@@ -61,6 +71,23 @@ func BuildSubmissionsArchive(rows []SubmissionRow, images []ImageFile) ([]byte, 
 			return nil, fmt.Errorf("exportutil: invalid archive path %q", image.ArchivePath)
 		}
 		if err := writeZipEntry(zw, path.Join("images", archivePath), data); err != nil {
+			_ = zw.Close()
+			return nil, err
+		}
+	}
+
+	for _, file := range files {
+		data, err := os.ReadFile(file.FilePath)
+		if err != nil {
+			_ = zw.Close()
+			return nil, fmt.Errorf("exportutil: read attachment file %q: %w", file.FilePath, err)
+		}
+		archivePath := strings.TrimPrefix(path.Clean("/"+file.ArchivePath), "/")
+		if archivePath == "." || archivePath == "" {
+			_ = zw.Close()
+			return nil, fmt.Errorf("exportutil: invalid archive path %q", file.ArchivePath)
+		}
+		if err := writeZipEntry(zw, path.Join("files", archivePath), data); err != nil {
 			_ = zw.Close()
 			return nil, err
 		}
@@ -134,7 +161,7 @@ func buildSheetXML(rows []SubmissionRow) ([]byte, error) {
 
 	b.WriteString(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`)
 	b.WriteString(`<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`)
-	b.WriteString(`<dimension ref="A1:K`)
+	b.WriteString(`<dimension ref="A1:L`)
 	b.WriteString(strconv.Itoa(lastRow))
 	b.WriteString(`"/>`)
 	b.WriteString(`<sheetData>`)
@@ -147,6 +174,7 @@ func buildSheetXML(rows []SubmissionRow) ([]byte, error) {
 		"taskTitle",
 		"contentText",
 		"imageFileNames",
+		"fileNames",
 		"score",
 		"comment",
 		"submittedAt",
@@ -162,6 +190,7 @@ func buildSheetXML(rows []SubmissionRow) ([]byte, error) {
 			row.TaskTitle,
 			row.ContentText,
 			row.ImageFileNames,
+			row.FileNames,
 			row.Score,
 			row.Comment,
 			row.SubmittedAt,

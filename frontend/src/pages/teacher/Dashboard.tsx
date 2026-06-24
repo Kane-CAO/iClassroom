@@ -30,7 +30,7 @@ export default function Dashboard() {
   const { roomCode = '' } = useParams()
   const navigate = useNavigate()
   const { showToast, ToastView } = useToast()
-  const { teacherToken, clear } = useTeacherSession()
+  const { token, teacherToken, hasTeacherAccess, clear } = useTeacherSession()
   const { courses, announcements, calendar } = teacherMocks
   const fallbackCourse = courses[0]
   const [room, setRoom] = useState<Room | null>(null)
@@ -60,17 +60,17 @@ export default function Dashboard() {
       setLoading(true)
       setError(null)
 
-      if (!teacherToken) {
+      if (!hasTeacherAccess) {
         setRoom(null)
         setOverview(null)
         setTasks([])
-        setError('老师会话缺失，请重新创建课堂。')
+        setError('老师会话缺失，请重新登录。')
         setLoading(false)
         return
       }
 
       try {
-        const auth = { teacherToken }
+        const auth = { token, teacherToken }
         const [roomData, overviewData, taskData] = await Promise.all([
           getRoom(roomCode, auth),
           getRoomOverview(roomCode, auth),
@@ -90,7 +90,7 @@ export default function Dashboard() {
         }
         if (isAuthError(err)) {
           clear()
-          setError('老师凭证无效或已过期，请重新创建课堂。')
+          setError('老师凭证无效或已过期，请重新登录。')
         } else {
           setError(getErrorMessage(err, '加载课堂概览失败。'))
         }
@@ -108,7 +108,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [clear, refreshVersion, roomCode, teacherToken])
+  }, [clear, hasTeacherAccess, refreshVersion, roomCode, teacherToken, token])
 
   useRoomWebSocket({
     roomCode,
@@ -159,6 +159,7 @@ export default function Dashboard() {
                 </button>
                 <TeacherRoomActions
                   roomCode={roomCode}
+                  token={token}
                   teacherToken={teacherToken}
                   roomEnded={isRoomEnded}
                   onEnded={refreshDashboardData}

@@ -43,8 +43,9 @@ func (h *FeaturedAnswerHandler) Feature(c *gin.Context) {
 	fa, err := h.featured.Feature(
 		c.Request.Context(),
 		submissionID,
-		c.GetHeader(headerTeacherToken),
+		legacyTeacherToken(c),
 		domain.DisplayMode(req.DisplayMode),
+		currentTeacherID(c),
 	)
 	if err != nil {
 		respondError(c, err)

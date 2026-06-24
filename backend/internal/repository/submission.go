@@ -127,6 +127,44 @@ ORDER BY id ASC`
 	return out, nil
 }
 
+func (r *SubmissionRepository) loadFilesBySubmissionID(ctx context.Context, submissionID int64) ([]domain.SubmissionFile, error) {
+	const q = `SELECT id, submission_id, kind, file_url, file_path, original_file_name, stored_file_name, file_size, mime_type, created_at
+FROM submission_attachments
+WHERE submission_id = ? AND kind = 'file'
+ORDER BY id ASC`
+
+	rows, err := r.db.QueryContext(ctx, q, submissionID)
+	if err != nil {
+		return nil, fmt.Errorf("repository: list submission files: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make([]domain.SubmissionFile, 0)
+	for rows.Next() {
+		var file domain.SubmissionFile
+		if err := rows.Scan(
+			&file.ID,
+			&file.SubmissionID,
+			&file.Kind,
+			&file.FileURL,
+			&file.FilePath,
+			&file.OriginalFileName,
+			&file.StoredFileName,
+			&file.FileSize,
+			&file.MimeType,
+			&file.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("repository: scan submission file: %w", err)
+		}
+		out = append(out, file)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("repository: iterate submission files: %w", err)
+	}
+
+	return out, nil
+}
+
 func (r *SubmissionRepository) attachSubmissionImages(ctx context.Context, sub *domain.Submission) error {
 	if sub == nil || sub.ID == 0 {
 		return nil
@@ -137,6 +175,11 @@ func (r *SubmissionRepository) attachSubmissionImages(ctx context.Context, sub *
 		return err
 	}
 	sub.Images = images
+	files, err := r.loadFilesBySubmissionID(ctx, sub.ID)
+	if err != nil {
+		return err
+	}
+	sub.Files = files
 	return nil
 }
 
@@ -510,7 +553,7 @@ type LeaderboardItem struct {
 // GetRoomBySubmissionID loads the room that owns a submission. It is used for
 // teacher-token authorization on submission-id based routes.
 func (r *SubmissionRepository) GetRoomBySubmissionID(ctx context.Context, submissionID int64) (*domain.Room, error) {
-	const q = `SELECT rm.id, rm.room_code, rm.title, rm.status, rm.group_count, rm.group_capacity,
+	const q = `SELECT rm.id, rm.teacher_id, rm.room_code, rm.title, rm.status, rm.group_count, rm.group_capacity,
 rm.allow_choose_group, rm.teacher_token, rm.created_at, rm.updated_at, rm.ended_at
 FROM rooms rm
 INNER JOIN submissions s ON s.room_id = rm.id

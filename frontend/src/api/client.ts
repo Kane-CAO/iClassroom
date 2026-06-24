@@ -26,6 +26,7 @@ export interface ApiRequestOptions<TBody = undefined> extends Omit<RequestInit, 
   method?: ApiMethod
   body?: TBody
   headers?: HeadersInit
+  token?: string
   teacherToken?: string
   studentToken?: string
 }
@@ -83,10 +84,13 @@ export function buildApiURL(path: string) {
 }
 
 function buildRequestInit<TBody>(options: ApiRequestOptions<TBody>): RequestInit {
-  const { body, headers: inputHeaders, teacherToken, studentToken, ...rest } = options
+  const { body, headers: inputHeaders, token, teacherToken, studentToken, ...rest } = options
   const headers = new Headers(inputHeaders)
   const init: RequestInit = { ...rest, headers }
 
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
   if (teacherToken) {
     headers.set('X-Teacher-Token', teacherToken)
   }

@@ -25,7 +25,7 @@ func NewFeaturedAnswerService(rooms RoomRepository, featured FeaturedAnswerRepos
 	}
 }
 
-func (s *FeaturedAnswerService) Feature(ctx context.Context, submissionID int64, teacherToken string, mode domain.DisplayMode) (*domain.FeaturedAnswer, error) {
+func (s *FeaturedAnswerService) Feature(ctx context.Context, submissionID int64, teacherToken string, mode domain.DisplayMode, teacherIDs ...int64) (*domain.FeaturedAnswer, error) {
 	if submissionID <= 0 {
 		return nil, apperr.SubmissionNotFound()
 	}
@@ -41,7 +41,7 @@ func (s *FeaturedAnswerService) Feature(ctx context.Context, submissionID int64,
 		return nil, err
 	}
 
-	if err := verifyTeacherForRoom(ctx, s.rooms, room, teacherToken); err != nil {
+	if err := verifyTeacherForRoom(ctx, s.rooms, room, teacherToken, teacherIDs...); err != nil {
 		return nil, err
 	}
 

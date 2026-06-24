@@ -22,6 +22,9 @@ func (r *SubmissionRepository) CreateImages(ctx context.Context, submissionID in
 	const insertImage = `INSERT INTO submission_images
 (submission_id, file_url, file_path, file_name, file_size, mime_type)
 VALUES (?, ?, ?, ?, ?, ?)`
+	const insertAttachment = `INSERT INTO submission_attachments
+(submission_id, kind, file_url, file_path, original_file_name, stored_file_name, file_size, mime_type)
+VALUES (?, 'image', ?, ?, ?, ?, ?, ?)`
 
 	for i := range images {
 		res, err := tx.ExecContext(
@@ -44,6 +47,20 @@ VALUES (?, ?, ?, ?, ?, ?)`
 		}
 		images[i].ID = imageID
 		images[i].SubmissionID = submissionID
+
+		if _, err := tx.ExecContext(
+			ctx,
+			insertAttachment,
+			submissionID,
+			images[i].FileURL,
+			images[i].FilePath,
+			images[i].FileName,
+			images[i].FileName,
+			images[i].FileSize,
+			images[i].MimeType,
+		); err != nil {
+			return nil, fmt.Errorf("repository: insert image attachment: %w", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -51,6 +68,40 @@ VALUES (?, ?, ?, ?, ?, ?)`
 	}
 
 	return images, nil
+}
+
+func (r *SubmissionRepository) CreateFiles(ctx context.Context, submissionID int64, files []domain.SubmissionFile) ([]domain.SubmissionFile, error) {
+	if len(files) == 0 {
+		return nil, nil
+	}
+
+	const q = `INSERT INTO submission_attachments
+(submission_id, kind, file_url, file_path, original_file_name, stored_file_name, file_size, mime_type)
+VALUES (?, 'file', ?, ?, ?, ?, ?, ?)`
+	for i := range files {
+		res, err := r.db.ExecContext(
+			ctx,
+			q,
+			submissionID,
+			files[i].FileURL,
+			files[i].FilePath,
+			files[i].OriginalFileName,
+			files[i].StoredFileName,
+			files[i].FileSize,
+			files[i].MimeType,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("repository: insert submission file: %w", err)
+		}
+		id, err := res.LastInsertId()
+		if err != nil {
+			return nil, fmt.Errorf("repository: submission file last insert id: %w", err)
+		}
+		files[i].ID = id
+		files[i].SubmissionID = submissionID
+		files[i].Kind = "file"
+	}
+	return files, nil
 }
 
 // DeleteByID removes one submission row. Linked images are removed by cascade.
